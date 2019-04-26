@@ -44,7 +44,6 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
     }
 }
 
-
 /// A unified `Stream` and `Sink` interface to an underlying I/O object,
 /// using the `Encoder` and `Decoder` traits to encode and decode frames.
 /// 

@@ -10,7 +10,11 @@ impl Decoder for BytesCodec {
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         let len = src.len();
-        Ok(Some(src.split_to(len).freeze()))
+        if len > 0 {
+            Ok(Some(src.split_to(len).freeze()))
+        } else {
+            Ok(None)
+        }
     }
 }
 
