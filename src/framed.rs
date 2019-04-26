@@ -1,7 +1,6 @@
 use super::framed_read::{framed_read_2, FramedRead2};
 use super::framed_write::{framed_write_2, FramedWrite2};
 use super::{Decoder, Encoder};
-use bytes::BytesMut;
 use futures::TryStream;
 use futures::io::{AsyncRead, AsyncWrite};
 use std::io::Error;
@@ -15,20 +14,11 @@ impl<T, U> Unpin for Fuse<T, U> {}
 
 impl<T: AsyncRead + Unpin, U> AsyncRead for Fuse<T, U> {
     fn poll_read(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<Result<usize, Error>> {
         Pin::new(&mut self.get_mut().0).poll_read(cx, buf)
-    }
-}
-
-impl<T, U: Decoder> Decoder for Fuse<T, U> {
-    type Item = U::Item;
-    type Error = U::Error;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        self.1.decode(src)
     }
 }
 
