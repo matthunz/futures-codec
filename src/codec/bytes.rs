@@ -3,6 +3,30 @@ use bytes::{Bytes, BytesMut};
 use std::io::Error;
 
 /// A simple codec that ships bytes around
+///
+/// # Example
+///
+///  ```
+/// #![feature(async_await, await_macro)]
+/// use bytes::Bytes;
+/// use futures::{SinkExt, TryStreamExt};
+/// use std::io::Cursor;
+/// use futures_codec::{BytesCodec, Framed};
+///
+/// async move {
+///     let mut buf = vec![];
+///     // Cursor implements AsyncRead and AsyncWrite
+///     let cur = Cursor::new(&mut buf);
+///     let mut framed = Framed::new(cur, BytesCodec {});
+///
+///     let msg = Bytes::from("Hello World!");
+///     await!(framed.send(msg)).unwrap();
+///
+///     while let Some(msg) = await!(framed.try_next()).unwrap() {
+///         println!("{:?}", msg);
+///     }
+/// };
+/// ```
 pub struct BytesCodec {}
 
 impl Decoder for BytesCodec {
@@ -22,7 +46,7 @@ impl Decoder for BytesCodec {
 impl Encoder for BytesCodec {
     type Item = Bytes;
     type Error = Error;
-    
+
     fn encode(&mut self, src: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         dst.extend_from_slice(&src);
         Ok(())
@@ -33,9 +57,9 @@ impl Encoder for BytesCodec {
 mod tests {
     use super::BytesCodec;
     use crate::Framed;
-    use std::io::Cursor;
-    use futures::{executor, TryStreamExt};
 
+    use futures::{executor, TryStreamExt};
+    use std::io::Cursor;
     #[test]
     fn decodes() {
         let mut buf = [0u8; 32];

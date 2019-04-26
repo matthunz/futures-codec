@@ -7,27 +7,24 @@
 //!
 //! ```
 //! # #![feature(async_await, await_macro)]
-//! # use futures::{SinkExt, TryStreamExt};
+//! # use futures::{executor, SinkExt, TryStreamExt};
 //! # use std::io::Cursor;
-//! use bytes::Bytes;
-//! use futures_codec::{BytesCodec, Framed};
+//! use futures_codec::{LinesCodec, Framed};
 //!
 //! async move {
 //!     # let mut buf = vec![];
 //!     # let stream = Cursor::new(&mut buf);
-//!     let mut framed = Framed::new(stream, BytesCodec {});
-//! 
-//!     let msg = Bytes::from("Hello World!");
-//!     await!(framed.send(msg)).unwrap();
+//!     // let stream = ...
+//!     let mut framed = Framed::new(stream, LinesCodec {});
 //!
-//!     while let Some(msg) = await!(framed.try_next()).unwrap() {
-//!         println!("{:?}", msg);
+//!     while let Some(line) = await!(framed.try_next()).unwrap() {
+//!         println!("{:?}", line);
 //!     }
 //! };
 //! ```
 
 mod codec;
-pub use codec::BytesCodec;
+pub use codec::{BytesCodec, LinesCodec};
 
 mod decoder;
 pub use decoder::Decoder;
