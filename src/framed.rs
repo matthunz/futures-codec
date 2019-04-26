@@ -1,6 +1,7 @@
 use super::framed_read::{framed_read_2, FramedRead2};
 use super::framed_write::{framed_write_2, FramedWrite2};
 use super::{Decoder, Encoder};
+use bytes::BytesMut;
 use futures::TryStream;
 use futures::io::{AsyncRead, AsyncWrite};
 use std::io::Error;
@@ -25,6 +26,10 @@ impl<T: AsyncRead + Unpin, U> AsyncRead for Fuse<T, U> {
 impl<T, U: Decoder> Decoder for Fuse<T, U> {
     type Item = U::Item;
     type Error = U::Error;
+
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        self.1.decode(src)
+    }
 }
 
 pub struct Framed<T, U> {

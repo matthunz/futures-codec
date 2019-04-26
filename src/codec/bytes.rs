@@ -1,11 +1,17 @@
 use crate::{Decoder, Encoder};
+use bytes::{Bytes, BytesMut};
 use std::io::Error;
 
 pub struct BytesCodec {}
 
 impl Decoder for BytesCodec {
-    type Item = ();
+    type Item = Bytes;
     type Error = Error;
+
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        let len = src.len();
+        Ok(Some(src.split_to(len).freeze()))
+    }
 }
 
 impl Encoder for BytesCodec {}
@@ -23,6 +29,7 @@ mod tests {
         let mut cur = Cursor::new(&mut buf);
         let mut framed = Framed::new(cur, BytesCodec {});
 
-        executor::block_on(framed.try_next()).unwrap().unwrap();
+        let read = executor::block_on(framed.try_next()).unwrap().unwrap();
+        assert_eq!(&read[..], &buf[..]);
     }
 }

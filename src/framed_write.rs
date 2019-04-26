@@ -1,5 +1,6 @@
 use super::{Decoder, Encoder};
 use super::framed::Fuse;
+use bytes::BytesMut;
 use futures::io::AsyncWrite;
 use futures::TryStream;
 use futures::io::AsyncRead;
@@ -43,4 +44,8 @@ impl<T: AsyncRead + Unpin> AsyncRead for FramedWrite2<T> {
 impl<T: Decoder> Decoder for FramedWrite2<T> {
     type Item = T::Item;
     type Error = T::Error;
+
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        self.inner.decode(src)
+    }
 }

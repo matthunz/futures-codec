@@ -11,10 +11,13 @@ mod framed_write;
 pub use framed_write::FramedWrite;
 
 use std::io::Error;
+use bytes::BytesMut;
 
 pub trait Decoder {
     type Item;
     type Error: From<Error>;
+
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error>;
 }
 
 pub trait Encoder {}

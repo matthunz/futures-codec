@@ -1,6 +1,7 @@
 use super::Decoder;
 use super::framed::Fuse;
-use futures::TryStream;
+use bytes::BytesMut;
+use futures::{ready, TryStream};
 use futures::io::AsyncRead;
 use std::marker::Unpin;
 use std::pin::Pin;
@@ -24,10 +25,13 @@ where
 
 pub struct FramedRead2<T> {
     inner: T,
+    buffer: BytesMut
 }
 
+const INITIAL_CAPACITY: usize = 8 * 1024;
+
 pub fn framed_read_2<T>(inner: T) -> FramedRead2<T> {
-    FramedRead2 { inner }
+    FramedRead2 { inner, buffer: BytesMut::with_capacity(INITIAL_CAPACITY) }
 }
 
 impl<T> TryStream for FramedRead2<T>
@@ -41,8 +45,16 @@ where
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Ok, Self::Error>>> {
-        let mut buf = [0u8; 32];
-        Pin::new(&mut self.inner).poll_read(cx, &mut buf);
-        unimplemented!()
+        let this = &mut *self;
+        let mut buf = [0u8; INITIAL_CAPACITY];
+        
+        loop {
+            let n = ready!(Pin::new(&mut this.inner).poll_read(cx, &mut buf))?;
+            this.buffer.extend_from_slice(&buf[..n]);
+            
+            if let Some(item) = this.inner.decode(&mut this.buffer)? {
+                return Poll::Ready(Some(Ok(item)));
+            }
+        }
     }
 }

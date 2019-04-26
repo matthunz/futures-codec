@@ -1,2 +1,2 @@
 mod bytes;
-pub use bytes::BytesCodec;
+pub use self::bytes::BytesCodec;
