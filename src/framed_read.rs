@@ -7,6 +7,23 @@ use std::marker::Unpin;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+/// A `Stream` of messages decoded from an `AsyncRead`.
+/// 
+/// # Example
+/// ```
+/// #![feature(async_await, await_macro)]
+/// use futures_codec::{BytesCodec, FramedRead};
+/// use futures::{executor, TryStreamExt};
+/// use bytes::Bytes;
+/// 
+/// let buf = b"Hello World!";
+/// let mut framed = FramedRead::new(&buf[..], BytesCodec {});
+/// 
+/// executor::block_on(async move {
+///     let msg = await!(framed.try_next()).unwrap().unwrap();
+///     assert_eq!(msg, Bytes::from(&buf[..]));
+/// })
+/// ```
 pub struct FramedRead<T, D> {
     inner: FramedRead2<Fuse<T, D>>,
 }
@@ -22,6 +39,22 @@ where
         }
     }
 }
+
+impl<T, D> TryStream for FramedRead<T, D>
+where
+    T: AsyncRead + Unpin,
+    D: Decoder
+{
+    type Ok = D::Item;
+    type Error = D::Error;
+
+    fn try_poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<Self::Ok, Self::Error>>> {
+        Pin::new(&mut self.inner).try_poll_next(cx)
+    }
+} 
 
 pub struct FramedRead2<T> {
     inner: T,
