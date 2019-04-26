@@ -10,6 +10,12 @@ use std::task::{Context, Poll};
 
 pub struct Fuse<T, U>(pub T, pub U);
 
+impl<T: Unpin, U> Fuse<T, U> {
+    pub fn pinned_t<'a>(self: Pin<&'a mut Self>) -> Pin<&'a mut T> {
+        Pin::new(&mut self.get_mut().0)
+    }
+}
+
 impl<T, U> Unpin for Fuse<T, U> {}
 
 impl<T: AsyncRead + Unpin, U> AsyncRead for Fuse<T, U> {
@@ -18,7 +24,7 @@ impl<T: AsyncRead + Unpin, U> AsyncRead for Fuse<T, U> {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<Result<usize, Error>> {
-        Pin::new(&mut self.get_mut().0).poll_read(cx, buf)
+        self.pinned_t().poll_read(cx, buf)
     }
 }
 
@@ -28,13 +34,13 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
         cx: &mut Context,
         buf: &[u8],
     ) -> Poll<Result<usize, Error>> {
-        Pin::new(&mut self.0).poll_write(cx, buf)
+        self.pinned_t().poll_write(cx, buf)
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
-        Pin::new(&mut self.0).poll_flush(cx)
+        self.pinned_t().poll_flush(cx)
     }
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
-        Pin::new(&mut self.0).poll_close(cx)
+        self.pinned_t().poll_close(cx)
     }
 }
 
