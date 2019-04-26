@@ -1,9 +1,9 @@
-use crate::Decoder;
-use crate::Fuse;
+use super::Decoder;
+use super::framed::Fuse;
 use futures::io::AsyncRead;
 
 pub struct FramedRead<T, D> {
-    fused: Fuse<T, D>,
+    inner: FramedRead2<Fuse<T, D>>,
 }
 
 impl<T, D> FramedRead<T, D>
@@ -13,7 +13,15 @@ where
 {
     pub fn new(inner: T, decoder: D) -> Self {
         Self {
-            fused: Fuse(inner, decoder),
+            inner: framed_read_2(Fuse(inner, decoder)),
         }
     }
+}
+
+pub struct FramedRead2<T> {
+    inner: T,
+}
+
+pub fn framed_read_2<T>(inner: T) -> FramedRead2<T> {
+    FramedRead2 { inner }
 }

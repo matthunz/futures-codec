@@ -9,17 +9,13 @@ impl Encoder for BytesCodec {}
 #[cfg(test)]
 mod tests {
     use super::BytesCodec;
-    use crate::{FramedRead, FramedWrite};
+    use crate::Framed;
+    use std::io::Cursor;
 
     #[test]
-    fn it_reads() {
-        let buf = b"Hello World!";
-        let _framed = FramedRead::new(&buf[..], BytesCodec {});
-    }
-
-    #[test]
-    fn it_writes() {
-        let mut buf = Vec::new();
-        let _framed = FramedWrite::new(&mut buf, BytesCodec {});
+    fn decodes_and_encodes() {
+        let mut buf = [0u8; 32];
+        let mut cur = Cursor::new(&mut buf);
+        let _framed = Framed::new(cur, BytesCodec {});
     }
 }

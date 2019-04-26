@@ -1,5 +1,5 @@
-use crate::Encoder;
-use crate::Fuse;
+use super::Encoder;
+use super::framed::Fuse;
 use futures::io::AsyncWrite;
 
 pub struct FramedWrite<T, E> {
@@ -16,4 +16,12 @@ where
             fused: Fuse(inner, encoder),
         }
     }
+}
+
+pub struct FramedWrite2<T> {
+    inner: T,
+}
+
+pub fn framed_write_2<T>(inner: T) -> FramedWrite2<T> {
+    FramedWrite2 { inner }
 }
