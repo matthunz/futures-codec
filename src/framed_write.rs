@@ -94,7 +94,7 @@ where
 {
     type SinkError = T::Error;
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
         Poll::Ready(Ok(()))
     }
     fn start_send(mut self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::SinkError> {

@@ -3,10 +3,14 @@ use bytes::BytesMut;
 use super::framed::Fuse;
 use super::framed_write::FramedWrite2;
 
+/// Decoding of frames via buffers, for use with `FramedRead`.
 pub trait Decoder {
+    /// The type of items returned by `decode`
     type Item;
+    /// The type of decoding errors.
     type Error: From<Error>;
 
+    /// Decode an item from the src `BytesMut` into an item
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error>;
 }
 
