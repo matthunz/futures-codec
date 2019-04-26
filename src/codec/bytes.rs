@@ -14,7 +14,15 @@ impl Decoder for BytesCodec {
     }
 }
 
-impl Encoder for BytesCodec {}
+impl Encoder for BytesCodec {
+    type Item = Bytes;
+    type Error = Error;
+    
+    fn encode(&mut self, src: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        dst.extend_from_slice(&src);
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod tests {

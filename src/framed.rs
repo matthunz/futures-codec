@@ -22,6 +22,22 @@ impl<T: AsyncRead + Unpin, U> AsyncRead for Fuse<T, U> {
     }
 }
 
+impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context,
+        buf: &[u8],
+    ) -> Poll<Result<usize, Error>> {
+        Pin::new(&mut self.0).poll_write(cx, buf)
+    }
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+        Pin::new(&mut self.0).poll_flush(cx)
+    }
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+        Pin::new(&mut self.0).poll_close(cx)
+    }
+}
+
 pub struct Framed<T, U> {
     inner: FramedRead2<FramedWrite2<Fuse<T, U>>>,
 }
