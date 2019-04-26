@@ -2,6 +2,7 @@ use crate::{Decoder, Encoder};
 use bytes::{Bytes, BytesMut};
 use std::io::Error;
 
+/// A simple codec that ships bytes around
 pub struct BytesCodec {}
 
 impl Decoder for BytesCodec {

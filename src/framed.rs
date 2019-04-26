@@ -30,23 +30,24 @@ impl<T: AsyncRead + Unpin, U> AsyncRead for Fuse<T, U> {
 
 impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
     fn poll_write(
-        mut self: Pin<&mut Self>,
+        self: Pin<&mut Self>,
         cx: &mut Context,
         buf: &[u8],
     ) -> Poll<Result<usize, Error>> {
         self.pinned_t().poll_write(cx, buf)
     }
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
         self.pinned_t().poll_flush(cx)
     }
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
         self.pinned_t().poll_close(cx)
     }
 }
 
+
 /// A unified `Stream` and `Sink` interface to an underlying I/O object,
 /// using the `Encoder` and `Decoder` traits to encode and decode frames.
-/// 
+///
 /// # Example
 /// ```
 /// #![feature(async_await, await_macro)]
@@ -54,7 +55,7 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
 /// use futures::{executor, SinkExt, TryStreamExt};
 /// use std::io::Cursor;
 /// use futures_codec::{BytesCodec, Framed};
-/// 
+///
 /// executor::block_on(async move {
 ///     let mut buf = b"Hello ".to_vec();
 ///     let cur = Cursor::new(&mut buf[..]);
@@ -100,7 +101,7 @@ where
 impl<T, U> Sink<U::Item> for Framed<T, U>
 where
     T: AsyncWrite + Unpin,
-    U: Encoder
+    U: Encoder,
 {
     type SinkError = U::Error;
 

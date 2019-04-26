@@ -1,4 +1,4 @@
-use super::{Encoder, Decoder};
+use super::Decoder;
 use super::framed::Fuse;
 use bytes::BytesMut;
 use futures::{ready, Sink, TryStream};
