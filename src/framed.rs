@@ -1,7 +1,7 @@
 use super::framed_read::{framed_read_2, FramedRead2};
 use super::framed_write::{framed_write_2, FramedWrite2};
 use super::{Decoder, Encoder};
-use futures::TryStream;
+use futures::{Sink, TryStream};
 use futures::io::{AsyncRead, AsyncWrite};
 use std::io::Error;
 use std::marker::Unpin;
@@ -44,6 +44,28 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
     }
 }
 
+
+/// A unified `Stream` and `Sink` interface to an underlying I/O object,
+/// using the `Encoder` and `Decoder` traits to encode and decode frames.
+/// 
+/// # Example
+/// ```
+/// #![feature(async_await, await_macro)]
+/// use bytes::Bytes;
+/// use futures::{executor, SinkExt, TryStreamExt};
+/// use std::io::Cursor;
+/// use futures_codec::{BytesCodec, Framed};
+/// 
+/// executor::block_on(async move {
+///     let mut buf = b"Hello ".to_vec();
+///     let cur = Cursor::new(&mut buf[..]);
+///     let mut framed = Framed::new(cur, BytesCodec {});
+///
+///     // Send bytes to `buf` through the `BytesCodec`
+///     let bytes = Bytes::from(" world!");
+///     await!(framed.send(bytes));
+/// })
+/// ```
 pub struct Framed<T, U> {
     inner: FramedRead2<FramedWrite2<Fuse<T, U>>>,
 }
@@ -73,5 +95,26 @@ where
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Ok, Self::Error>>> {
         Pin::new(&mut self.inner).try_poll_next(cx)
+    }
+}
+
+impl<T, U> Sink<U::Item> for Framed<T, U>
+where
+    T: AsyncWrite + Unpin,
+    U: Encoder
+{
+    type SinkError = U::Error;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+        Pin::new(&mut self.inner).poll_ready(cx)
+    }
+    fn start_send(mut self: Pin<&mut Self>, item: U::Item) -> Result<(), Self::SinkError> {
+        Pin::new(&mut self.inner).start_send(item)
+    }
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+        Pin::new(&mut self.inner).poll_flush(cx)
+    }
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+        Pin::new(&mut self.inner).poll_close(cx)
     }
 }

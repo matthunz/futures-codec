@@ -1,24 +1,24 @@
-use super::Decoder;
+use super::{Encoder, Decoder};
 use super::framed::Fuse;
 use bytes::BytesMut;
-use futures::{ready, TryStream};
+use futures::{ready, Sink, TryStream};
 use futures::io::AsyncRead;
 use std::marker::Unpin;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
 /// A `Stream` of messages decoded from an `AsyncRead`.
-/// 
+///
 /// # Example
 /// ```
 /// #![feature(async_await, await_macro)]
 /// use futures_codec::{BytesCodec, FramedRead};
 /// use futures::{executor, TryStreamExt};
 /// use bytes::Bytes;
-/// 
+///
 /// let buf = b"Hello World!";
 /// let mut framed = FramedRead::new(&buf[..], BytesCodec {});
-/// 
+///
 /// executor::block_on(async move {
 ///     let msg = await!(framed.try_next()).unwrap().unwrap();
 ///     assert_eq!(msg, Bytes::from(&buf[..]));
@@ -43,7 +43,7 @@ where
 impl<T, D> TryStream for FramedRead<T, D>
 where
     T: AsyncRead + Unpin,
-    D: Decoder
+    D: Decoder,
 {
     type Ok = D::Item;
     type Error = D::Error;
@@ -54,17 +54,20 @@ where
     ) -> Poll<Option<Result<Self::Ok, Self::Error>>> {
         Pin::new(&mut self.inner).try_poll_next(cx)
     }
-} 
+}
 
 pub struct FramedRead2<T> {
     inner: T,
-    buffer: BytesMut
+    buffer: BytesMut,
 }
 
 const INITIAL_CAPACITY: usize = 8 * 1024;
 
 pub fn framed_read_2<T>(inner: T) -> FramedRead2<T> {
-    FramedRead2 { inner, buffer: BytesMut::with_capacity(INITIAL_CAPACITY) }
+    FramedRead2 {
+        inner,
+        buffer: BytesMut::with_capacity(INITIAL_CAPACITY),
+    }
 }
 
 impl<T> TryStream for FramedRead2<T>
@@ -80,14 +83,34 @@ where
     ) -> Poll<Option<Result<Self::Ok, Self::Error>>> {
         let this = &mut *self;
         let mut buf = [0u8; INITIAL_CAPACITY];
-        
+
         loop {
             let n = ready!(Pin::new(&mut this.inner).poll_read(cx, &mut buf))?;
             this.buffer.extend_from_slice(&buf[..n]);
-            
+
             if let Some(item) = this.inner.decode(&mut this.buffer)? {
                 return Poll::Ready(Some(Ok(item)));
             }
         }
+    }
+}
+
+impl<T, I> Sink<I> for FramedRead2<T>
+where
+    T: Sink<I> + Unpin,
+{
+    type SinkError = T::SinkError;
+
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+        Pin::new(&mut self.inner).poll_ready(cx)
+    }
+    fn start_send(mut self: Pin<&mut Self>, item: I) -> Result<(), Self::SinkError> {
+        Pin::new(&mut self.inner).start_send(item)
+    }
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+        Pin::new(&mut self.inner).poll_flush(cx)
+    }
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+        Pin::new(&mut self.inner).poll_close(cx)
     }
 }
