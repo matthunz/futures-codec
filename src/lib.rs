@@ -1,3 +1,4 @@
+#![feature(futures_api)]
 //! Utilities for encoding and decoding frames using `async/await`.
 //!
 //! Contains adapters to go from streams of bytes, [`AsyncRead`](futures::io::AsyncRead)
