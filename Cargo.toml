@@ -5,3 +5,4 @@ authors = ["Matt Hunzinger <matthunz2@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+futures-preview = "0.3.0-alpha.14"
