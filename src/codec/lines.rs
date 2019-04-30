@@ -26,7 +26,7 @@ impl Decoder for LinesCodec {
                 String::from_utf8(buf.to_vec())
                     .map(Some)
                     .map_err(|e| Error::new(ErrorKind::InvalidData, e))
-            },
+            }
             _ => Ok(None),
         }
     }
@@ -41,7 +41,7 @@ mod test {
     use std::io::Cursor;
     #[test]
     fn it_works() {
-        let buf = "Hello\nWorld\n".to_owned();
+        let buf = "Hello\nWorld\nError".to_owned();
         let cur = Cursor::new(buf);
 
         let mut framed = FramedRead::new(cur, LinesCodec {});
@@ -49,5 +49,7 @@ mod test {
         assert_eq!(next, "Hello\n");
         let next = executor::block_on(framed.try_next()).unwrap().unwrap();
         assert_eq!(next, "World\n");
+
+        assert!(executor::block_on(framed.try_next()).is_err());
     }
 }

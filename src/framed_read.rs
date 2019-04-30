@@ -1,8 +1,11 @@
-use super::Decoder;
+
 use super::framed::Fuse;
+use super::Decoder;
+
 use bytes::BytesMut;
-use futures::{ready, Sink, TryStream};
 use futures::io::AsyncRead;
+use futures::{ready, Sink, TryStream};
+use std::io;
 use std::marker::Unpin;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -88,8 +91,19 @@ where
             let n = ready!(Pin::new(&mut this.inner).poll_read(cx, &mut buf))?;
             this.buffer.extend_from_slice(&buf[..n]);
 
-            if let Some(item) = this.inner.decode(&mut this.buffer)? {
-                return Poll::Ready(Some(Ok(item)));
+            match this.inner.decode(&mut this.buffer)? {
+                Some(item) => return Poll::Ready(Some(Ok(item))),
+                None => {
+                    if this.buffer.is_empty() {
+                        return Poll::Ready(None);
+                    } else if n == 0 {
+                        return Poll::Ready(Some(Err(io::Error::new(
+                            io::ErrorKind::UnexpectedEof,
+                            "bytes remaining in stream",
+                        )
+                        .into())));
+                    }
+                }
             }
         }
     }
