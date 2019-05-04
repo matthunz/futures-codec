@@ -4,7 +4,7 @@ use super::Decoder;
 
 use bytes::BytesMut;
 use futures::io::AsyncRead;
-use futures::{ready, Sink, TryStream};
+use futures::{ready, Sink, TryStream, TryStreamExt};
 use std::io;
 use std::marker::Unpin;
 use std::pin::Pin;
@@ -55,7 +55,7 @@ where
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<Option<Result<Self::Ok, Self::Error>>> {
-        Pin::new(&mut self.inner).try_poll_next(cx)
+        self.inner.try_poll_next_unpin(cx)
     }
 }
 
