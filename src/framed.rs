@@ -1,7 +1,7 @@
 use super::framed_read::{framed_read_2, FramedRead2};
 use super::framed_write::{framed_write_2, FramedWrite2};
 use super::{Decoder, Encoder};
-use futures::{Sink, TryStream};
+use futures::{Sink, Stream, TryStreamExt};
 use futures::io::{AsyncRead, AsyncWrite};
 use std::io::Error;
 use std::marker::Unpin;
@@ -82,19 +82,18 @@ where
     }
 }
 
-impl<T, U> TryStream for Framed<T, U>
+impl<T, U> Stream for Framed<T, U>
 where
     T: AsyncRead + Unpin,
     U: Decoder,
 {
-    type Ok = U::Item;
-    type Error = U::Error;
+    type Item = Result<U::Item, U::Error>;
 
-    fn try_poll_next(
+    fn poll_next(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Ok, Self::Error>>> {
-        Pin::new(&mut self.inner).try_poll_next(cx)
+    ) -> Poll<Option<Self::Item>> {
+        self.inner.try_poll_next_unpin(cx)
     }
 }
 

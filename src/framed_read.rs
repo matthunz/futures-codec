@@ -4,7 +4,7 @@ use super::Decoder;
 
 use bytes::BytesMut;
 use futures::io::AsyncRead;
-use futures::{ready, Sink, TryStream, TryStreamExt};
+use futures::{ready, Sink, Stream, TryStreamExt};
 use std::io;
 use std::marker::Unpin;
 use std::pin::Pin;
@@ -43,18 +43,14 @@ where
     }
 }
 
-impl<T, D> TryStream for FramedRead<T, D>
+impl<T, D> Stream for FramedRead<T, D>
 where
     T: AsyncRead + Unpin,
     D: Decoder,
 {
-    type Ok = D::Item;
-    type Error = D::Error;
+    type Item = Result<D::Item, D::Error>;
 
-    fn try_poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Ok, Self::Error>>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.inner.try_poll_next_unpin(cx)
     }
 }
@@ -73,17 +69,14 @@ pub fn framed_read_2<T>(inner: T) -> FramedRead2<T> {
     }
 }
 
-impl<T> TryStream for FramedRead2<T>
+
+impl<T> Stream for FramedRead2<T>
 where
     T: AsyncRead + Decoder + Unpin,
 {
-    type Ok = T::Item;
-    type Error = T::Error;
+    type Item = Result<T::Item, T::Error>;
 
-    fn try_poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Result<Self::Ok, Self::Error>>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = &mut *self;
         let mut buf = [0u8; INITIAL_CAPACITY];
 
