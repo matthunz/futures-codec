@@ -13,4 +13,4 @@ edition = "2018"
 
 [dependencies]
 bytes = "0.4.12"
-futures-preview = "0.3.0-alpha.15"
+futures-preview = "=0.3.0-alpha.16"
