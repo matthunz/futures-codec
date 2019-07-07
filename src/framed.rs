@@ -57,13 +57,16 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
 /// use futures_codec::{BytesCodec, Framed};
 ///
 /// executor::block_on(async move {
-///     let mut buf = b"Hello ".to_vec();
-///     let cur = Cursor::new(&mut buf[..]);
+///     let cur = Cursor::new(vec![0u8; 12]);
 ///     let mut framed = Framed::new(cur, BytesCodec {});
 ///
 ///     // Send bytes to `buf` through the `BytesCodec`
-///     let bytes = Bytes::from(" world!");
+///     let bytes = Bytes::from("Hello world!");
 ///     await!(framed.send(bytes));
+///
+///     // Dispose of the framer and return the I/O and codec
+///     let (cur, _) = framed.release();
+///     assert_eq!(cur.get_ref(), b"Hello world!");
 /// })
 /// ```
 pub struct Framed<T, U> {
@@ -79,6 +82,12 @@ where
         Self {
             inner: framed_read_2(framed_write_2(Fuse(inner, codec))),
         }
+    }
+
+    /// Release the I/O and Codec
+    pub fn release(self: Self) -> (T, U) {
+        let fuse = self.inner.release().release();
+        (fuse.0, fuse.1)
     }
 }
 

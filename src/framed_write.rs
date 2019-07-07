@@ -41,6 +41,12 @@ where
             inner: framed_write_2(Fuse(inner, encoder)),
         }
     }
+
+    /// Release the I/O and Encoder
+    pub fn release(self: Self) -> (T, E) {
+        let fuse = self.inner.release();
+        (fuse.0, fuse.1)
+    }
 }
 
 impl<T, E> Sink<E::Item> for FramedWrite<T, E>
@@ -108,5 +114,11 @@ where
     }
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
         Pin::new(&mut self.inner).poll_close(cx).map_err(Into::into)
+    }
+}
+
+impl<T> FramedWrite2<T> {
+    pub fn release(self: Self) -> T {
+        self.inner
     }
 }
