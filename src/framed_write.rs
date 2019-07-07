@@ -54,18 +54,18 @@ where
     T: AsyncWrite + Unpin,
     E: Encoder,
 {
-    type SinkError = E::Error;
+    type Error = E::Error;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_ready(cx)
     }
-    fn start_send(mut self: Pin<&mut Self>, item: E::Item) -> Result<(), Self::SinkError> {
+    fn start_send(mut self: Pin<&mut Self>, item: E::Item) -> Result<(), Self::Error> {
         Pin::new(&mut self.inner).start_send(item)
     }
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_close(cx)
     }
 }
@@ -98,21 +98,21 @@ impl<T> Sink<T::Item> for FramedWrite2<T>
 where
     T: AsyncWrite + Encoder + Unpin,
 {
-    type SinkError = T::Error;
+    type Error = T::Error;
 
-    fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
-    fn start_send(mut self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::SinkError> {
+    fn start_send(mut self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::Error> {
         let this = &mut *self;
         this.inner.encode(item, &mut this.buffer)
     }
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         let this = &mut *self;
         ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
         Pin::new(&mut self.inner).poll_flush(cx).map_err(Into::into)
     }
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_close(cx).map_err(Into::into)
     }
 }

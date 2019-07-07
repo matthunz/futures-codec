@@ -112,18 +112,18 @@ impl<T, I> Sink<I> for FramedRead2<T>
 where
     T: Sink<I> + Unpin,
 {
-    type SinkError = T::SinkError;
+    type Error = T::Error;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_ready(cx)
     }
-    fn start_send(mut self: Pin<&mut Self>, item: I) -> Result<(), Self::SinkError> {
+    fn start_send(mut self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
         Pin::new(&mut self.inner).start_send(item)
     }
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_close(cx)
     }
 }

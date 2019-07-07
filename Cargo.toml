@@ -1,6 +1,6 @@
 [package]
 name = "futures_codec"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Matt Hunzinger <matthunz2@gmail.com>"]
 description = "Utilities for encoding and decoding frames using `async/await`"
 license = "MIT"
@@ -13,4 +13,4 @@ edition = "2018"
 
 [dependencies]
 bytes = "0.4.12"
-futures-preview = "=0.3.0-alpha.16"
+futures-preview = "0.3.0-alpha.17"

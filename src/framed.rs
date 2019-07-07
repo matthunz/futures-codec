@@ -111,18 +111,18 @@ where
     T: AsyncWrite + Unpin,
     U: Encoder,
 {
-    type SinkError = U::Error;
+    type Error = U::Error;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_ready(cx)
     }
-    fn start_send(mut self: Pin<&mut Self>, item: U::Item) -> Result<(), Self::SinkError> {
+    fn start_send(mut self: Pin<&mut Self>, item: U::Item) -> Result<(), Self::Error> {
         Pin::new(&mut self.inner).start_send(item)
     }
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_close(cx)
     }
 }
