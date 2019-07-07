@@ -41,6 +41,12 @@ where
             inner: framed_read_2(Fuse(inner, decoder)),
         }
     }
+
+    /// Release the I/O and Decoder
+    pub fn release(self: Self) -> (T, D) {
+        let fuse = self.inner.release();
+        (fuse.0, fuse.1)
+    }
 }
 
 impl<T, D> Stream for FramedRead<T, D>
@@ -119,5 +125,11 @@ where
     }
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::SinkError>> {
         Pin::new(&mut self.inner).poll_close(cx)
+    }
+}
+
+impl<T> FramedRead2<T>  {
+    pub fn release(self: Self) -> T {
+        self.inner
     }
 }
