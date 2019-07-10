@@ -22,7 +22,7 @@ use std::task::{Context, Poll};
 ///     let mut framed = FramedWrite::new(&mut buf, BytesCodec {});
 ///     
 ///     let msg = Bytes::from("Hello World!");
-///     await!(framed.send(msg.clone())).unwrap();
+///     framed.send(msg.clone()).await.unwrap();
 ///     
 ///     assert_eq!(&buf[..], &msg[..]);
 /// })

@@ -20,9 +20,9 @@ use std::io::Error;
 ///     let mut framed = Framed::new(cur, BytesCodec {});
 ///
 ///     let msg = Bytes::from("Hello World!");
-///     await!(framed.send(msg)).unwrap();
+///     framed.send(msg).await.unwrap();
 ///
-///     while let Some(msg) = await!(framed.try_next()).unwrap() {
+///     while let Some(msg) = framed.try_next().await.unwrap() {
 ///         println!("{:?}", msg);
 ///     }
 /// };

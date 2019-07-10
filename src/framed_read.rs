@@ -23,7 +23,7 @@ use std::task::{Context, Poll};
 /// let mut framed = FramedRead::new(&buf[..], BytesCodec {});
 ///
 /// executor::block_on(async move {
-///     let msg = await!(framed.try_next()).unwrap().unwrap();
+///     let msg = framed.try_next().await.unwrap().unwrap();
 ///     assert_eq!(msg, Bytes::from(&buf[..]));
 /// })
 /// ```

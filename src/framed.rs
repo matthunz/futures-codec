@@ -62,7 +62,7 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
 ///
 ///     // Send bytes to `buf` through the `BytesCodec`
 ///     let bytes = Bytes::from("Hello world!");
-///     await!(framed.send(bytes));
+///     framed.send(bytes).await.unwrap();
 ///
 ///     // Dispose of the framer and return the I/O and codec
 ///     let (cur, _) = framed.release();

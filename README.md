@@ -14,7 +14,7 @@ async fn main() {
     // let stream = ...
     let mut framed = Framed::new(stream, LinesCodec {});
 
-    while let Some(line) = await!(framed.try_next()).unwrap() {
+    while let Some(line) = framed.try_next().await.unwrap() {
         println!("{:?}", line);
     }
 }
