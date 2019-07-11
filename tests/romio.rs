@@ -24,8 +24,9 @@ fn receive_twice()
 
 		let mut framed = Framed::new( stream, LinesCodec {} );
 
-		framed.send( "A line\n"       .to_string() ).await.expect( "Send a line" );
-		framed.send( "A second line\n".to_string() ).await.expect( "Send a line" );
+		framed.send( "A line\n"       .to_string() ).await.expect( "Send a line"        );
+		framed.send( "A second line\n".to_string() ).await.expect( "Send a second line" );
+		framed.send( "A third line\n" .to_string() ).await.expect( "Send a third line"  );
 	};
 
 	let client = async
@@ -50,6 +51,22 @@ fn receive_twice()
 		let res = framed.next().await.expect( "Receive some" ).expect( "Receive a second line" );
 		dbg!( &res );
 		assert_eq!( "A second line\n".to_string(), res );
+
+
+		let res = framed.next().await.expect( "Receive some" ).expect( "Receive a second line" );
+		dbg!( &res );
+
+		assert_eq!( "A line\n".to_string(), res );
+
+
+		let res = framed.next().await.expect( "Receive some" ).expect( "Receive a second line" );
+		dbg!( &res );
+		assert_eq!( "A second line\n".to_string(), res );
+
+
+		let res = framed.next().await.expect( "Receive some" ).expect( "Receive a second line" );
+		dbg!( &res );
+		assert_eq!( "A third line\n".to_string(), res );
 
 
 		let res = framed.next().await;
