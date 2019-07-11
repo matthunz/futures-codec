@@ -14,3 +14,7 @@ edition = "2018"
 [dependencies]
 bytes = "0.4.12"
 futures-preview = "0.3.0-alpha.17"
+
+[dev-dependencies]
+romio = "0.3.0-alpha.9"
+async_runtime = { version = "=0.1.7", package = "naja_async_runtime" }
