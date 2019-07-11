@@ -20,10 +20,10 @@ use std::task::{Context, Poll};
 /// executor::block_on(async move {
 ///     let mut buf = Vec::new();
 ///     let mut framed = FramedWrite::new(&mut buf, BytesCodec {});
-///     
+///
 ///     let msg = Bytes::from("Hello World!");
 ///     framed.send(msg.clone()).await.unwrap();
-///     
+///
 ///     assert_eq!(&buf[..], &msg[..]);
 /// })
 /// ```
@@ -109,7 +109,8 @@ where
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         let this = &mut *self;
-        ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
+        let n = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
+        this.buffer.split_to(n+1);
         Pin::new(&mut self.inner).poll_flush(cx).map_err(Into::into)
     }
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {

@@ -9,6 +9,10 @@ use
 };
 
 
+// This test caught a bug in FramedWrite2::poll_flush. The written out bytes did not get removed
+// from the buffer. This test assures correct integration of the LinesCodec, both encoding and
+// decoding.
+//
 #[test]
 //
 fn receive_twice()
@@ -39,23 +43,6 @@ fn receive_twice()
 
 		let res = framed.next().await.expect( "Receive some" ).expect( "Receive a line" );
 		dbg!( &res );
-		assert_eq!( "A line\n".to_string(), res );
-
-
-		let res = framed.next().await.expect( "Receive some" ).expect( "Receive a second line" );
-		dbg!( &res );
-
-		assert_eq!( "A line\n".to_string(), res );
-
-
-		let res = framed.next().await.expect( "Receive some" ).expect( "Receive a second line" );
-		dbg!( &res );
-		assert_eq!( "A second line\n".to_string(), res );
-
-
-		let res = framed.next().await.expect( "Receive some" ).expect( "Receive a second line" );
-		dbg!( &res );
-
 		assert_eq!( "A line\n".to_string(), res );
 
 
