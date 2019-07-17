@@ -109,8 +109,12 @@ where
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         let this = &mut *self;
-        ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
-        Pin::new(&mut self.inner).poll_flush(cx).map_err(Into::into)
+        while !this.buffer.is_empty() {
+            let num_write = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
+            let _ = this.buffer.split_to(num_write);
+            ready!(Pin::new(&mut this.inner).poll_flush(cx).map_err(Into::into))?;
+        }
+        Poll::Ready(Ok(()))
     }
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.inner).poll_close(cx).map_err(Into::into)
