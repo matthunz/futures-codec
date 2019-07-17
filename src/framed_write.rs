@@ -3,7 +3,7 @@ use super::framed::Fuse;
 use bytes::BytesMut;
 use futures::{ready, Sink};
 use futures::io::{AsyncRead, AsyncWrite};
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::marker::Unpin;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -111,6 +111,13 @@ where
         let this = &mut *self;
         while !this.buffer.is_empty() {
             let num_write = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
+
+            if num_write == 0 {
+                return Poll::Ready(Err(
+                    Error::new(ErrorKind::UnexpectedEof, "End of file").into()
+                ));
+            }
+
             let _ = this.buffer.split_to(num_write);
             ready!(Pin::new(&mut this.inner).poll_flush(cx).map_err(Into::into))?;
         }
