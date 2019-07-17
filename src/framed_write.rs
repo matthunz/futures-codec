@@ -122,3 +122,26 @@ impl<T> FramedWrite2<T> {
         self.inner
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use std::io::Cursor;
+
+    use futures::executor;
+    use futures::sink::SinkExt;
+
+    use crate::LinesCodec;
+
+    #[test]
+    fn line_write() {
+        let curs = Cursor::new(vec![0u8; 16]);
+        let mut framer = FramedWrite::new(curs, LinesCodec {});
+        executor::block_on(framer.send("Hello\n".to_owned())).unwrap();
+        executor::block_on(framer.send("World\n".to_owned())).unwrap();
+        let (curs, _) = framer.release();
+        assert_eq!(&curs.get_ref()[0..12], b"Hello\nWorld\n");
+        assert_eq!(curs.position(), 12);
+    }
+}
