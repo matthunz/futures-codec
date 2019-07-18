@@ -77,20 +77,24 @@ fn line_write_to_eof() {
 }
 
 #[test]
-fn really_big_writes() {
-    const NUM_WRITE: usize = 524288;
+fn send_high_water_mark() {
+    // stream will output 999 bytes, 1 at at a time, and will always be ready
+    let mut stream = stream::iter(ZeroBytes {
+        count: 0,
+        limit: 999,
+    });
 
+    // sink will eat whatever it receives
     let io = AsyncWriteNull {
         num_poll_write: 0,
         last_write_size: 0,
     };
+
+    // expect two sends
     let mut framer = FramedWrite::new(io, BytesCodec {});
-    let mut stream = stream::iter(ZeroBytes {
-        count: 0,
-        limit: NUM_WRITE,
-    });
+    framer.set_send_high_water_mark(500);
     executor::block_on(framer.send_all(&mut stream)).unwrap();
     let (io, _) = framer.release();
-    assert_eq!(io.num_poll_write, 1);
-    assert_eq!(io.last_write_size, NUM_WRITE);
+    assert_eq!(io.num_poll_write, 2);
+    assert_eq!(io.last_write_size, 499);
 }
