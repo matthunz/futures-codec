@@ -75,8 +75,6 @@ pub struct FramedWrite2<T> {
     buffer: BytesMut,
 }
 
-const SEND_HIGH_WATER_MARK: usize = 8 * 1024;
-
 pub fn framed_write_2<T>(inner: T) -> FramedWrite2<T> {
     FramedWrite2 {
         inner,
@@ -102,11 +100,7 @@ where
 {
     type Error = T::Error;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        while self.buffer.len() > SEND_HIGH_WATER_MARK {
-            ready!(Pin::new(&mut *self).poll_flush(cx))?;
-        }
-
+    fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
     fn start_send(mut self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::Error> {
