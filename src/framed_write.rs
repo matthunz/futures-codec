@@ -133,8 +133,8 @@ where
         Poll::Ready(Ok(()))
     }
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        ready!(Pin::new(&mut *self).poll_flush(cx))?;
-        Pin::new(&mut (*self).inner).poll_close(cx).map_err(Into::into)
+        ready!(self.as_mut().poll_flush(cx))?;
+        Pin::new(&mut self.inner).poll_close(cx).map_err(Into::into)
     }
 }
 
