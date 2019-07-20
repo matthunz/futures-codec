@@ -3,7 +3,7 @@ use super::framed::Fuse;
 use bytes::BytesMut;
 use futures::{ready, Sink};
 use futures::io::{AsyncRead, AsyncWrite};
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::marker::Unpin;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -109,10 +109,23 @@ where
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         let this = &mut *self;
-        ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
-        Pin::new(&mut self.inner).poll_flush(cx).map_err(Into::into)
+
+        while !this.buffer.is_empty() {
+            let num_write = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
+
+            if num_write == 0 {
+                return Poll::Ready(Err(
+                    Error::new(ErrorKind::UnexpectedEof, "End of file").into()
+                ));
+            }
+
+            let _ = this.buffer.split_to(num_write);
+        }
+
+        Pin::new(&mut this.inner).poll_flush(cx).map_err(Into::into)
     }
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().poll_flush(cx))?;
         Pin::new(&mut self.inner).poll_close(cx).map_err(Into::into)
     }
 }
@@ -120,5 +133,39 @@ where
 impl<T> FramedWrite2<T> {
     pub fn release(self: Self) -> T {
         self.inner
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use std::io::Cursor;
+
+    use futures::executor;
+    use futures::sink::SinkExt;
+
+    use crate::LinesCodec;
+
+    #[test]
+    fn line_write() {
+        let curs = Cursor::new(vec![0u8; 16]);
+        let mut framer = FramedWrite::new(curs, LinesCodec {});
+        executor::block_on(framer.send("Hello\n".to_owned())).unwrap();
+        executor::block_on(framer.send("World\n".to_owned())).unwrap();
+        let (curs, _) = framer.release();
+        assert_eq!(&curs.get_ref()[0..12], b"Hello\nWorld\n");
+        assert_eq!(curs.position(), 12);
+    }
+
+    #[test]
+    fn line_write_to_eof() {
+        let curs = Cursor::new(vec![0u8; 16]);
+        let mut framer = FramedWrite::new(curs, LinesCodec {});
+        let _err = executor::block_on(framer.send("This will fill up the buffer\n".to_owned()))
+            .unwrap_err();
+        let (curs, _) = framer.release();
+        assert_eq!(curs.position(), 16);
+        assert_eq!(&curs.get_ref()[0..16], b"This will fill u");
     }
 }
