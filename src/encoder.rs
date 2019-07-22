@@ -1,6 +1,6 @@
+use super::framed::Fuse;
 use bytes::BytesMut;
 use std::io::Error;
-use super::framed::Fuse;
 
 /// Encoding of messages as bytes, for use with `FramedWrite`.
 pub trait Encoder {

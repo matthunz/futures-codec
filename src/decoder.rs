@@ -1,7 +1,7 @@
-use std::io::Error;
-use bytes::BytesMut;
 use super::framed::Fuse;
 use super::framed_write::FramedWrite2;
+use bytes::BytesMut;
+use std::io::Error;
 
 /// Decoding of frames via buffers, for use with `FramedRead`.
 pub trait Decoder {

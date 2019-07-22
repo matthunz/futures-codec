@@ -1,8 +1,8 @@
 use super::framed_read::{framed_read_2, FramedRead2};
 use super::framed_write::{framed_write_2, FramedWrite2};
 use super::{Decoder, Encoder};
-use futures::{Sink, Stream, TryStreamExt};
 use futures::io::{AsyncRead, AsyncWrite};
+use futures::{Sink, Stream, TryStreamExt};
 use std::io::Error;
 use std::marker::Unpin;
 use std::pin::Pin;
@@ -43,7 +43,6 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
         self.pinned_t().poll_close(cx)
     }
 }
-
 
 /// A unified `Stream` and `Sink` interface to an underlying I/O object,
 /// using the `Encoder` and `Decoder` traits to encode and decode frames.
@@ -98,10 +97,7 @@ where
 {
     type Item = Result<U::Item, U::Error>;
 
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.inner.try_poll_next_unpin(cx)
     }
 }

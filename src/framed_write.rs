@@ -1,8 +1,8 @@
-use super::Encoder;
 use super::framed::Fuse;
+use super::Encoder;
 use bytes::BytesMut;
-use futures::{ready, Sink};
 use futures::io::{AsyncRead, AsyncWrite};
+use futures::{ready, Sink};
 use std::io::{Error, ErrorKind};
 use std::marker::Unpin;
 use std::pin::Pin;

@@ -1,4 +1,3 @@
-
 use super::framed::Fuse;
 use super::Decoder;
 
@@ -75,7 +74,6 @@ pub fn framed_read_2<T>(inner: T) -> FramedRead2<T> {
     }
 }
 
-
 impl<T> Stream for FramedRead2<T>
 where
     T: AsyncRead + Decoder + Unpin,
@@ -128,7 +126,7 @@ where
     }
 }
 
-impl<T> FramedRead2<T>  {
+impl<T> FramedRead2<T> {
     pub fn release(self: Self) -> T {
         self.inner
     }
