@@ -77,6 +77,8 @@ where
     T: AsyncRead + AsyncWrite,
     U: Decoder + Encoder,
 {
+    /// Creates a new `Framed` transport with the given codec.
+    /// A codec is a type which implements `Decoder` and `Encoder`.
     pub fn new(inner: T, codec: U) -> Self {
         Self {
             inner: framed_read_2(framed_write_2(Fuse(inner, codec))),

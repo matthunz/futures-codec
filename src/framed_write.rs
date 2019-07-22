@@ -36,7 +36,7 @@ where
     T: AsyncWrite,
     E: Encoder,
 {
-    /// Creates a new `FramedWrite` with the given `Encoder`.
+    /// Creates a new `FramedWrite` transport with the given `Encoder`.
     pub fn new(inner: T, encoder: E) -> Self {
         Self {
             inner: framed_write_2(Fuse(inner, encoder)),

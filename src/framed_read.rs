@@ -35,6 +35,7 @@ where
     T: AsyncRead,
     D: Decoder,
 {
+    /// Creates a new `FramedRead` transport with the given `Decoder`.
     pub fn new(inner: T, decoder: D) -> Self {
         Self {
             inner: framed_read_2(Fuse(inner, decoder)),
