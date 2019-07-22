@@ -36,6 +36,7 @@ where
     T: AsyncWrite,
     E: Encoder,
 {
+    /// Creates a new `FramedWrite` with the given `Encoder`.
     pub fn new(inner: T, encoder: E) -> Self {
         Self {
             inner: framed_write_2(Fuse(inner, encoder)),
@@ -43,7 +44,7 @@ where
     }
 
     /// Release the I/O and Encoder
-    pub fn release(self: Self) -> (T, E) {
+    pub fn release(self) -> (T, E) {
         let fuse = self.inner.release();
         (fuse.0, fuse.1)
     }
@@ -115,11 +116,11 @@ where
 
             if num_write == 0 {
                 return Poll::Ready(Err(
-                    Error::new(ErrorKind::UnexpectedEof, "End of file").into()
+                    Error::new(ErrorKind::UnexpectedEof, "End of stream").into()
                 ));
             }
 
-            let _ = this.buffer.split_to(num_write);
+            this.buffer.split_to(num_write);
         }
 
         Pin::new(&mut this.inner).poll_flush(cx).map_err(Into::into)
@@ -131,41 +132,7 @@ where
 }
 
 impl<T> FramedWrite2<T> {
-    pub fn release(self: Self) -> T {
+    pub fn release(self) -> T {
         self.inner
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    use std::io::Cursor;
-
-    use futures::executor;
-    use futures::sink::SinkExt;
-
-    use crate::LinesCodec;
-
-    #[test]
-    fn line_write() {
-        let curs = Cursor::new(vec![0u8; 16]);
-        let mut framer = FramedWrite::new(curs, LinesCodec {});
-        executor::block_on(framer.send("Hello\n".to_owned())).unwrap();
-        executor::block_on(framer.send("World\n".to_owned())).unwrap();
-        let (curs, _) = framer.release();
-        assert_eq!(&curs.get_ref()[0..12], b"Hello\nWorld\n");
-        assert_eq!(curs.position(), 12);
-    }
-
-    #[test]
-    fn line_write_to_eof() {
-        let curs = Cursor::new(vec![0u8; 16]);
-        let mut framer = FramedWrite::new(curs, LinesCodec {});
-        let _err = executor::block_on(framer.send("This will fill up the buffer\n".to_owned()))
-            .unwrap_err();
-        let (curs, _) = framer.release();
-        assert_eq!(curs.position(), 16);
-        assert_eq!(&curs.get_ref()[0..16], b"This will fill u");
     }
 }
