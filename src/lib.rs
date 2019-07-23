@@ -40,5 +40,4 @@ pub use framed_read::FramedRead;
 mod framed_write;
 pub use framed_write::FramedWrite;
 
-mod transport;
-pub use transport::Transport;
+pub mod transport;

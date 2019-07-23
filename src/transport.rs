@@ -3,6 +3,18 @@ use bytes::BytesMut;
 use futures::io::{AsyncRead, AsyncWrite};
 use std::marker::Unpin;
 
+pub type FramedRead<T, U> = Transport<T, U, FramedPart, Empty>;
+
+impl<T, U> FramedRead<T, U>
+where
+    T: AsyncRead + Unpin,
+    U: Decoder,
+{
+    pub fn new(io: T, decoder: U) -> Self {
+        Transport::framed_read(io, decoder)
+    }
+}
+
 pub struct Empty {
     _priv: (),
 }
@@ -13,7 +25,7 @@ impl Empty {
     }
 }
 
-pub struct Framed {
+pub struct FramedPart {
     buf: BytesMut,
 }
 
@@ -23,7 +35,7 @@ pub struct Transport<T, U, A, B> {
     parts: (A, B),
 }
 
-impl<T, U> Transport<T, U, Framed, Framed>
+impl<T, U> Transport<T, U, FramedPart, FramedPart>
 where
     T: AsyncRead + AsyncWrite + Unpin,
     U: Decoder + Encoder,
@@ -33,10 +45,10 @@ where
             io,
             codec,
             parts: (
-                Framed {
+                FramedPart {
                     buf: BytesMut::new(),
                 },
-                Framed {
+                FramedPart {
                     buf: BytesMut::new(),
                 },
             ),
@@ -44,7 +56,7 @@ where
     }
 }
 
-impl<T, U> Transport<T, U, Framed, Empty>
+impl<T, U> Transport<T, U, FramedPart, Empty>
 where
     T: AsyncRead + Unpin,
     U: Decoder,
@@ -54,7 +66,7 @@ where
             io,
             codec: decoder,
             parts: (
-                Framed {
+                FramedPart {
                     buf: BytesMut::new(),
                 },
                 Empty::new(),
@@ -63,18 +75,18 @@ where
     }
 }
 
-impl<T, U> Transport<T, U, Empty, Framed>
+impl<T, U> Transport<T, U, Empty, FramedPart>
 where
     T: AsyncWrite + Unpin,
     U: Encoder,
 {
-    pub fn framed_write(io: T, encoder: U) -> Transport<T, U, Empty, Framed> {
+    pub fn framed_write(io: T, encoder: U) -> Transport<T, U, Empty, FramedPart> {
         Transport {
             io,
             codec: encoder,
             parts: (
                 Empty::new(),
-                Framed {
+                FramedPart {
                     buf: BytesMut::new(),
                 },
             ),
@@ -82,12 +94,12 @@ where
     }
 }
 
-impl<T, U, B> Transport<T, U, Framed, B> {
+impl<T, U, B> Transport<T, U, FramedPart, B> {
     /// Stream
     pub fn next(&self) {}
 }
 
-impl<T, U, A> Transport<T, U, A, Framed> {
+impl<T, U, A> Transport<T, U, A, FramedPart> {
     /// Sink
     pub fn send(&self) {}
 }
