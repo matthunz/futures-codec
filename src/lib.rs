@@ -24,7 +24,7 @@
 //! ```
 
 mod codec;
-pub use codec::{BytesCodec, LinesCodec};
+pub use codec::{BytesCodec, LinesCodec, LengthCodec};
 
 mod decoder;
 pub use decoder::Decoder;
