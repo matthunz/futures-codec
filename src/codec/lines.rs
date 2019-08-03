@@ -10,6 +10,7 @@ impl Encoder for LinesCodec {
     type Error = Error;
 
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        dst.reserve(item.len());
         dst.put(item);
         Ok(())
     }
