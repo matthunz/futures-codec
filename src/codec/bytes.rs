@@ -29,6 +29,16 @@ use std::io::Error;
 /// ```
 pub struct BytesCodec {}
 
+impl Encoder for BytesCodec {
+    type Item = Bytes;
+    type Error = Error;
+
+    fn encode(&mut self, src: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        dst.extend_from_slice(&src);
+        Ok(())
+    }
+}
+
 impl Decoder for BytesCodec {
     type Item = Bytes;
     type Error = Error;
@@ -40,15 +50,5 @@ impl Decoder for BytesCodec {
         } else {
             Ok(None)
         }
-    }
-}
-
-impl Encoder for BytesCodec {
-    type Item = Bytes;
-    type Error = Error;
-
-    fn encode(&mut self, src: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        dst.extend_from_slice(&src);
-        Ok(())
     }
 }
