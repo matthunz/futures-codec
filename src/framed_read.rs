@@ -83,6 +83,11 @@ where
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = &mut *self;
+
+        if let Some(item) = this.inner.decode(&mut this.buffer)? {
+            return Poll::Ready(Some(Ok(item)));
+        }
+
         let mut buf = [0u8; INITIAL_CAPACITY];
 
         loop {
