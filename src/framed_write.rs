@@ -150,7 +150,7 @@ where
                 return Poll::Ready(Err(err_eof().into()));
             }
 
-            let _ = this.buffer.split_to(num_write);
+            this.buffer.advance(num_write);
         }
 
         Poll::Ready(Ok(()))
@@ -169,7 +169,7 @@ where
                 return Poll::Ready(Err(err_eof().into()));
             }
 
-            this.buffer.split_to(num_write);
+            this.buffer.advance(num_write);
         }
 
         Pin::new(&mut this.inner).poll_flush(cx).map_err(Into::into)
