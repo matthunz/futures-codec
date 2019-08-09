@@ -6,7 +6,7 @@
 //! Framed streams are also known as `transports`.
 //!
 //! ```
-//! # #![feature(async_await, await_macro)]
+//! # #![feature(async_await)]
 //! # use futures::{executor, SinkExt, TryStreamExt};
 //! # use std::io::Cursor;
 //! use futures_codec::{LinesCodec, Framed};
