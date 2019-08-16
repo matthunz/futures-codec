@@ -12,7 +12,7 @@ use std::task::{Context, Poll};
 ///
 /// # Example
 /// ```
-/// #![feature(async_await, await_macro)]
+/// #![feature(async_await)]
 /// use bytes::Bytes;
 /// use futures_codec::{FramedWrite, BytesCodec};
 /// use futures::{executor, SinkExt};
@@ -20,10 +20,10 @@ use std::task::{Context, Poll};
 /// executor::block_on(async move {
 ///     let mut buf = Vec::new();
 ///     let mut framed = FramedWrite::new(&mut buf, BytesCodec {});
-///     
+///
 ///     let msg = Bytes::from("Hello World!");
 ///     framed.send(msg.clone()).await.unwrap();
-///     
+///
 ///     assert_eq!(&buf[..], &msg[..]);
 /// })
 /// ```

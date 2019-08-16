@@ -49,7 +49,7 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
 ///
 /// # Example
 /// ```
-/// #![feature(async_await, await_macro)]
+/// #![feature(async_await)]
 /// use bytes::Bytes;
 /// use futures::{executor, SinkExt, TryStreamExt};
 /// use std::io::Cursor;
