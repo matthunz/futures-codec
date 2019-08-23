@@ -1,6 +1,7 @@
 use crate::{Decoder, Encoder};
 use bytes::{BufMut, BytesMut};
 use std::io::{Error, ErrorKind};
+use memchr::memchr;
 
 /// A simple `Codec` implementation that splits up data into lines.
 pub struct LinesCodec {}
@@ -21,8 +22,8 @@ impl Decoder for LinesCodec {
     type Error = Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match src.iter().position(|b| b == &b'\n') {
-            Some(pos) if !src.is_empty() => {
+        match memchr(b'\n', src) {
+            Some(pos) => {
                 let buf = src.split_to(pos + 1);
                 String::from_utf8(buf.to_vec())
                     .map(Some)
