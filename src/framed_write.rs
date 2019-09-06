@@ -43,6 +43,40 @@ where
         }
     }
 
+    /// High-water mark for writes, in bytes
+    ///
+    /// The send *high-water mark* prevents the `FramedWrite`
+    /// from accepting additional messages to send when its
+    /// buffer exceeds this length, in bytes. Attempts to enqueue
+    /// additional messages will be deferred until progress is
+    /// made on the underlying `AsyncWrite`. This applies
+    /// back-pressure on fast senders and prevents unbounded
+    /// buffer growth.
+    ///
+    /// See [`set_send_high_water_mark()`](#method.set_send_high_water_mark).
+    pub fn send_high_water_mark(&self) -> usize {
+        return self.inner.high_water_mark;
+    }
+
+    /// Sets high-water mark for writes, in bytes
+    ///
+    /// The send *high-water mark* prevents the `FramedWrite`
+    /// from accepting additional messages to send when its
+    /// buffer exceeds this length, in bytes. Attempts to enqueue
+    /// additional messages will be deferred until progress is
+    /// made on the underlying `AsyncWrite`. This applies
+    /// back-pressure on fast senders and prevents unbounded
+    /// buffer growth.
+    ///
+    /// The default high-water mark is 2^17 bytes. Applications
+    /// which desire low latency may wish to reduce this value.
+    /// There is little point to increasing this value beyond
+    /// your socket's `SO_SNDBUF` size. On linux, this defaults
+    /// to 212992 bytes but is user-adjustable.
+    pub fn set_send_high_water_mark(&mut self, hwm: usize) {
+        self.inner.high_water_mark = hwm;
+    }
+
     /// Release the I/O and Encoder
     pub fn release(self) -> (T, E) {
         let fuse = self.inner.release();
@@ -73,12 +107,18 @@ where
 
 pub struct FramedWrite2<T> {
     pub inner: T,
+    pub high_water_mark: usize,
     buffer: BytesMut,
 }
+
+// 2^17 bytes, which is slightly over 60% of the default
+// TCP send buffer size (SO_SNDBUF)
+const DEFAULT_SEND_HIGH_WATER_MARK: usize = 131072;
 
 pub fn framed_write_2<T>(inner: T) -> FramedWrite2<T> {
     FramedWrite2 {
         inner,
+        high_water_mark: DEFAULT_SEND_HIGH_WATER_MARK,
         buffer: BytesMut::with_capacity(1028 * 8),
     }
 }
@@ -101,7 +141,18 @@ where
 {
     type Error = T::Error;
 
-    fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        let this = &mut *self;
+        while this.buffer.len() >= this.high_water_mark {
+            let num_write = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
+
+            if num_write == 0 {
+                return Poll::Ready(Err(err_eof().into()));
+            }
+
+            this.buffer.advance(num_write);
+        }
+
         Poll::Ready(Ok(()))
     }
     fn start_send(mut self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::Error> {
@@ -115,12 +166,10 @@ where
             let num_write = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
 
             if num_write == 0 {
-                return Poll::Ready(Err(
-                    Error::new(ErrorKind::UnexpectedEof, "End of stream").into()
-                ));
+                return Poll::Ready(Err(err_eof().into()));
             }
 
-            this.buffer.split_to(num_write);
+            this.buffer.advance(num_write);
         }
 
         Pin::new(&mut this.inner).poll_flush(cx).map_err(Into::into)
@@ -135,4 +184,8 @@ impl<T> FramedWrite2<T> {
     pub fn release(self) -> T {
         self.inner
     }
+}
+
+fn err_eof() -> Error {
+    Error::new(ErrorKind::UnexpectedEof, "End of file")
 }
