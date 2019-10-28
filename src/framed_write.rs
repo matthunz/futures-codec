@@ -109,6 +109,7 @@ pub struct FramedWrite2<T> {
     pub inner: T,
     pub high_water_mark: usize,
     buffer: BytesMut,
+    closing: bool
 }
 
 // 2^17 bytes, which is slightly over 60% of the default
@@ -120,6 +121,7 @@ pub fn framed_write_2<T>(inner: T) -> FramedWrite2<T> {
         inner,
         high_water_mark: DEFAULT_SEND_HIGH_WATER_MARK,
         buffer: BytesMut::with_capacity(1028 * 8),
+        closing: false
     }
 }
 
@@ -175,7 +177,12 @@ where
         Pin::new(&mut this.inner).poll_flush(cx).map_err(Into::into)
     }
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().poll_flush(cx))?;
+        if !self.closing {
+            ready!(self.as_mut().poll_flush(cx))?;
+            // Remember that we are closing down so that we do
+            // not repeatedly call `poll_flush`.
+            self.closing = true
+        }
         Pin::new(&mut self.inner).poll_close(cx).map_err(Into::into)
     }
 }
