@@ -5,10 +5,26 @@ use futures::io::{AsyncRead, AsyncWrite};
 use futures::{Sink, Stream, TryStreamExt};
 use std::io::Error;
 use std::marker::Unpin;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+#[derive(Debug)]
 pub struct Fuse<T, U>(pub T, pub U);
+
+impl<T, U> Deref for Fuse<T, U> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
+impl<T, U> DerefMut for Fuse<T, U> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.0
+    }
+}
 
 impl<T: Unpin, U> Fuse<T, U> {
     pub fn pinned_t<'a>(self: Pin<&'a mut Self>) -> Pin<&'a mut T> {
@@ -68,8 +84,23 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
 ///     assert_eq!(cur.get_ref(), b"Hello world!");
 /// })
 /// ```
+#[derive(Debug)]
 pub struct Framed<T, U> {
     inner: FramedRead2<FramedWrite2<Fuse<T, U>>>,
+}
+
+impl<T, U> Deref for Framed<T, U> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T, U> DerefMut for Framed<T, U> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
 }
 
 impl<T, U> Framed<T, U>

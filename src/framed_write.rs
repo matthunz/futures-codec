@@ -5,6 +5,7 @@ use futures::io::{AsyncRead, AsyncWrite};
 use futures::{ready, Sink};
 use std::io::{Error, ErrorKind};
 use std::marker::Unpin;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -27,8 +28,23 @@ use std::task::{Context, Poll};
 ///     assert_eq!(&buf[..], &msg[..]);
 /// })
 /// ```
+#[derive(Debug)]
 pub struct FramedWrite<T, E> {
     inner: FramedWrite2<Fuse<T, E>>,
+}
+
+impl<T, E> Deref for FramedWrite<T, E> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T, E> DerefMut for FramedWrite<T, E> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
 }
 
 impl<T, E> FramedWrite<T, E>
@@ -105,10 +121,25 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct FramedWrite2<T> {
     pub inner: T,
     pub high_water_mark: usize,
     buffer: BytesMut,
+}
+
+impl<T> Deref for FramedWrite2<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for FramedWrite2<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
 }
 
 // 2^17 bytes, which is slightly over 60% of the default
