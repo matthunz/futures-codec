@@ -6,6 +6,7 @@ use futures::io::AsyncRead;
 use futures::{ready, Sink, Stream, TryStreamExt};
 use std::io;
 use std::marker::Unpin;
+use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -26,8 +27,23 @@ use std::task::{Context, Poll};
 ///     assert_eq!(msg, Bytes::from(&buf[..]));
 /// })
 /// ```
+#[derive(Debug)]
 pub struct FramedRead<T, D> {
     inner: FramedRead2<Fuse<T, D>>,
+}
+
+impl<T, D> Deref for FramedRead<T, D> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T, D> DerefMut for FramedRead<T, D> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
 }
 
 impl<T, D> FramedRead<T, D>
@@ -61,9 +77,24 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct FramedRead2<T> {
     inner: T,
     buffer: BytesMut,
+}
+
+impl<T> Deref for FramedRead2<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for FramedRead2<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
 }
 
 const INITIAL_CAPACITY: usize = 8 * 1024;
