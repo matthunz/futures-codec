@@ -68,7 +68,7 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
 /// #![feature(async_await)]
 /// use bytes::Bytes;
 /// use futures::{executor, SinkExt, TryStreamExt};
-/// use std::io::Cursor;
+/// use futures::io::Cursor;
 /// use futures_codec::{BytesCodec, Framed};
 ///
 /// executor::block_on(async move {

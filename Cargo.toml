@@ -14,5 +14,5 @@ categories = ["asynchronous", "network-programming"]
 
 [dependencies]
 bytes = "0.4.12"
-futures-preview = "0.3.0-alpha.17"
+futures = "0.3.0"
 memchr = "2.2.1"
