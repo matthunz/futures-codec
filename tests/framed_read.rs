@@ -1,10 +1,10 @@
 use futures::executor;
 use futures::stream::StreamExt;
-use futures::task::Context;
-use futures::{AsyncRead, Poll};
+use futures::AsyncRead;
 use futures_codec::{FramedRead, LinesCodec};
 use std::io;
 use std::pin::Pin;
+use std::task::{Context, Poll};
 
 // Sends two lines at once, then nothing else forever
 struct MockBurstySender {

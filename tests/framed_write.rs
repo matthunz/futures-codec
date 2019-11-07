@@ -1,13 +1,11 @@
 use bytes::Bytes;
 use core::iter::Iterator;
-use futures::io::AsyncWrite;
+use futures::io::{AsyncWrite, Cursor};
 use futures::sink::SinkExt;
-use futures::task::Context;
-use futures::Poll;
-use futures::{executor, stream};
+use futures::{executor, stream, stream::StreamExt};
 use futures_codec::{BytesCodec, FramedWrite, LinesCodec};
-use std::io::Cursor;
 use std::pin::Pin;
+use std::task::{Context, Poll};
 
 // An iterator which outputs a single zero byte up to limit times
 struct ZeroBytes {
@@ -67,7 +65,8 @@ fn line_write() {
 
 #[test]
 fn line_write_to_eof() {
-    let curs = Cursor::new(vec![0u8; 16]);
+    let mut buf = [0u8; 16];
+    let curs = Cursor::new(&mut buf[..]);
     let mut framer = FramedWrite::new(curs, LinesCodec {});
     let _err =
         executor::block_on(framer.send("This will fill up the buffer\n".to_owned())).unwrap_err();
@@ -82,7 +81,7 @@ fn send_high_water_mark() {
     let mut stream = stream::iter(ZeroBytes {
         count: 0,
         limit: 999,
-    });
+    }).map(Ok);
 
     // sink will eat whatever it receives
     let io = AsyncWriteNull {

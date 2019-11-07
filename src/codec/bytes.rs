@@ -10,7 +10,7 @@ use std::io::Error;
 /// #![feature(async_await)]
 /// use bytes::Bytes;
 /// use futures::{SinkExt, TryStreamExt};
-/// use std::io::Cursor;
+/// use futures::io::Cursor;
 /// use futures_codec::{BytesCodec, Framed};
 ///
 /// async move {

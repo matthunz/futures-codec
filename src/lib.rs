@@ -8,7 +8,7 @@
 //! ```
 //! # #![feature(async_await)]
 //! # use futures::{executor, SinkExt, TryStreamExt};
-//! # use std::io::Cursor;
+//! # use futures::io::Cursor;
 //! use futures_codec::{LinesCodec, Framed};
 //!
 //! async move {
