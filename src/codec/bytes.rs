@@ -7,7 +7,6 @@ use std::io::Error;
 /// # Example
 ///
 ///  ```
-/// #![feature(async_await)]
 /// use bytes::Bytes;
 /// use futures::{SinkExt, TryStreamExt};
 /// use futures::io::Cursor;

@@ -13,7 +13,6 @@ use std::task::{Context, Poll};
 ///
 /// # Example
 /// ```
-/// #![feature(async_await)]
 /// use bytes::Bytes;
 /// use futures_codec::{FramedWrite, BytesCodec};
 /// use futures::{executor, SinkExt};

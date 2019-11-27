@@ -14,7 +14,6 @@ use std::task::{Context, Poll};
 ///
 /// # Example
 /// ```
-/// #![feature(async_await)]
 /// use futures_codec::{BytesCodec, FramedRead};
 /// use futures::{executor, TryStreamExt};
 /// use bytes::Bytes;
