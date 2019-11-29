@@ -15,18 +15,19 @@ use std::task::{Context, Poll};
 ///
 /// # Example
 /// ```
-/// #![feature(async_await)]
 /// use futures_codec::{BytesCodec, FramedRead};
-/// use futures::{executor, TryStreamExt};
+/// use futures::TryStreamExt;
 /// use bytes::Bytes;
 ///
-/// let buf = b"Hello World!";
-/// let mut framed = FramedRead::new(&buf[..], BytesCodec {});
+/// let buf = [3u8; 3];
+/// let mut framed = FramedRead::new(&buf[..], BytesCodec);
 ///
-/// executor::block_on(async move {
-///     let msg = framed.try_next().await.unwrap().unwrap();
-///     assert_eq!(msg, Bytes::from(&buf[..]));
-/// })
+/// # futures::executor::block_on(async move {
+/// if let Some(bytes) = framed.try_next().await? {
+///     assert_eq!(bytes, Bytes::from(&buf[..]));
+/// }
+/// # Ok::<_, std::io::Error>(())
+/// # }).unwrap();
 /// ```
 #[derive(Debug)]
 pub struct FramedRead<T, D> {

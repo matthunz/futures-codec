@@ -14,20 +14,20 @@ use std::task::{Context, Poll};
 ///
 /// # Example
 /// ```
-/// #![feature(async_await)]
 /// use bytes::Bytes;
 /// use futures_codec::{FramedWrite, BytesCodec};
-/// use futures::{executor, SinkExt};
+/// use futures::SinkExt;
 ///
-/// executor::block_on(async move {
-///     let mut buf = Vec::new();
-///     let mut framed = FramedWrite::new(&mut buf, BytesCodec {});
+/// # futures::executor::block_on(async move {
+/// let mut buf = Vec::new();
+/// let mut framed = FramedWrite::new(&mut buf, BytesCodec {});
 ///
-///     let msg = Bytes::from("Hello World!");
-///     framed.send(msg.clone()).await.unwrap();
+/// let bytes = Bytes::from("Hello World!");
+/// framed.send(bytes.clone()).await?;
 ///
-///     assert_eq!(&buf[..], &msg[..]);
-/// })
+/// assert_eq!(&buf[..], &bytes[..]);
+/// # Ok::<_, std::io::Error>(())
+/// # }).unwrap();
 /// ```
 #[pin_project]
 #[derive(Debug)]

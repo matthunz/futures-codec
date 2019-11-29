@@ -4,7 +4,7 @@ use memchr::memchr;
 use std::io::{Error, ErrorKind};
 
 /// A simple `Codec` implementation that splits up data into lines.
-pub struct LinesCodec {}
+pub struct LinesCodec;
 
 impl Encoder for LinesCodec {
     type Item = String;

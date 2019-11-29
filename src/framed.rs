@@ -15,24 +15,24 @@ use std::task::{Context, Poll};
 ///
 /// # Example
 /// ```
-/// #![feature(async_await)]
 /// use bytes::Bytes;
-/// use futures::{executor, SinkExt, TryStreamExt};
+/// use futures::{SinkExt, TryStreamExt};
 /// use futures::io::Cursor;
 /// use futures_codec::{BytesCodec, Framed};
 ///
-/// executor::block_on(async move {
-///     let cur = Cursor::new(vec![0u8; 12]);
-///     let mut framed = Framed::new(cur, BytesCodec {});
+/// # futures::executor::block_on(async move {
+/// let cur = Cursor::new(vec![0u8; 12]);
+/// let mut framed = Framed::new(cur, BytesCodec {});
 ///
-///     // Send bytes to `buf` through the `BytesCodec`
-///     let bytes = Bytes::from("Hello world!");
-///     framed.send(bytes).await.unwrap();
+/// // Send bytes to `buf` through the `BytesCodec`
+/// let bytes = Bytes::from("Hello world!");
+/// framed.send(bytes).await?;
 ///
-///     // Dispose of the framer and return the I/O and codec
-///     let (cur, _) = framed.release();
-///     assert_eq!(cur.get_ref(), b"Hello world!");
-/// })
+/// // Release the I/O and codec
+/// let (cur, _) = framed.release();
+/// assert_eq!(cur.get_ref(), b"Hello world!");
+/// # Ok::<_, std::io::Error>(())
+/// # }).unwrap();
 /// ```
 #[pin_project]
 #[derive(Debug)]
