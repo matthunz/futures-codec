@@ -81,7 +81,8 @@ fn send_high_water_mark() {
     let mut stream = stream::iter(ZeroBytes {
         count: 0,
         limit: 999,
-    }).map(Ok);
+    })
+    .map(Ok);
 
     // sink will eat whatever it receives
     let io = AsyncWriteNull {

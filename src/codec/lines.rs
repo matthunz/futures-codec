@@ -1,7 +1,7 @@
 use crate::{Decoder, Encoder};
 use bytes::{BufMut, BytesMut};
-use std::io::{Error, ErrorKind};
 use memchr::memchr;
+use std::io::{Error, ErrorKind};
 
 /// A simple `Codec` implementation that splits up data into lines.
 pub struct LinesCodec {}

@@ -1,64 +1,14 @@
 use super::framed_read::{framed_read_2, FramedRead2};
 use super::framed_write::{framed_write_2, FramedWrite2};
+use super::fuse::Fuse;
 use super::{Decoder, Encoder};
 use futures::io::{AsyncRead, AsyncWrite};
 use futures::{Sink, Stream, TryStreamExt};
-use std::io::Error;
+use pin_project::pin_project;
 use std::marker::Unpin;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::task::{Context, Poll};
-
-#[derive(Debug)]
-pub struct Fuse<T, U>(pub T, pub U);
-
-impl<T, U> Deref for Fuse<T, U> {
-    type Target = T;
-
-    fn deref(&self) -> &T {
-        &self.0
-    }
-}
-
-impl<T, U> DerefMut for Fuse<T, U> {
-    fn deref_mut(&mut self) -> &mut T {
-        &mut self.0
-    }
-}
-
-impl<T: Unpin, U> Fuse<T, U> {
-    pub fn pinned_t<'a>(self: Pin<&'a mut Self>) -> Pin<&'a mut T> {
-        Pin::new(&mut self.get_mut().0)
-    }
-}
-
-impl<T, U> Unpin for Fuse<T, U> {}
-
-impl<T: AsyncRead + Unpin, U> AsyncRead for Fuse<T, U> {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut [u8],
-    ) -> Poll<Result<usize, Error>> {
-        self.pinned_t().poll_read(cx, buf)
-    }
-}
-
-impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context,
-        buf: &[u8],
-    ) -> Poll<Result<usize, Error>> {
-        self.pinned_t().poll_write(cx, buf)
-    }
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
-        self.pinned_t().poll_flush(cx)
-    }
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Error>> {
-        self.pinned_t().poll_close(cx)
-    }
-}
 
 /// A unified `Stream` and `Sink` interface to an underlying I/O object,
 /// using the `Encoder` and `Decoder` traits to encode and decode frames.
@@ -84,8 +34,10 @@ impl<T: AsyncWrite + Unpin, U> AsyncWrite for Fuse<T, U> {
 ///     assert_eq!(cur.get_ref(), b"Hello world!");
 /// })
 /// ```
+#[pin_project]
 #[derive(Debug)]
 pub struct Framed<T, U> {
+    #[pin]
     inner: FramedRead2<FramedWrite2<Fuse<T, U>>>,
 }
 
@@ -112,14 +64,14 @@ where
     /// A codec is a type which implements `Decoder` and `Encoder`.
     pub fn new(inner: T, codec: U) -> Self {
         Self {
-            inner: framed_read_2(framed_write_2(Fuse(inner, codec))),
+            inner: framed_read_2(framed_write_2(Fuse::new(inner, codec))),
         }
     }
 
     /// Release the I/O and Codec
     pub fn release(self: Self) -> (T, U) {
         let fuse = self.inner.release().release();
-        (fuse.0, fuse.1)
+        (fuse.t, fuse.u)
     }
 }
 
@@ -142,16 +94,16 @@ where
 {
     type Error = U::Error;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_ready(cx)
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_ready(cx)
     }
-    fn start_send(mut self: Pin<&mut Self>, item: U::Item) -> Result<(), Self::Error> {
-        Pin::new(&mut self.inner).start_send(item)
+    fn start_send(self: Pin<&mut Self>, item: U::Item) -> Result<(), Self::Error> {
+        self.project().inner.start_send(item)
     }
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_flush(cx)
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_flush(cx)
     }
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_close(cx)
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_close(cx)
     }
 }

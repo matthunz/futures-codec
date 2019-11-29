@@ -24,7 +24,7 @@
 //! ```
 
 mod codec;
-pub use codec::{BytesCodec, LinesCodec, LengthCodec};
+pub use codec::{BytesCodec, LengthCodec, LinesCodec};
 
 mod decoder;
 pub use decoder::Decoder;
@@ -40,3 +40,5 @@ pub use framed_read::FramedRead;
 
 mod framed_write;
 pub use framed_write::FramedWrite;
+
+mod fuse;
