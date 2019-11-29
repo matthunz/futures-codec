@@ -7,27 +7,26 @@ use std::io::Error;
 /// # Example
 ///
 ///  ```
-/// #![feature(async_await)]
+/// # futures::executor::block_on(async move {
 /// use bytes::Bytes;
 /// use futures::{SinkExt, TryStreamExt};
 /// use futures::io::Cursor;
 /// use futures_codec::{BytesCodec, Framed};
 ///
-/// async move {
-///     let mut buf = vec![];
-///     // Cursor implements AsyncRead and AsyncWrite
-///     let cur = Cursor::new(&mut buf);
-///     let mut framed = Framed::new(cur, BytesCodec {});
+/// let mut buf = vec![];
+/// // Cursor implements AsyncRead and AsyncWrite
+/// let cur = Cursor::new(&mut buf);
+/// let mut framed = Framed::new(cur, BytesCodec);
 ///
-///     let msg = Bytes::from("Hello World!");
-///     framed.send(msg).await.unwrap();
+/// framed.send(Bytes::from("Hello World!")).await?;
 ///
-///     while let Some(msg) = framed.try_next().await.unwrap() {
-///         println!("{:?}", msg);
-///     }
-/// };
+/// while let Some(bytes) = framed.try_next().await? {
+///     dbg!(bytes);
+/// }
+/// # Ok::<_, std::io::Error>(())
+/// # }).unwrap();
 /// ```
-pub struct BytesCodec {}
+pub struct BytesCodec;
 
 impl Encoder for BytesCodec {
     type Item = Bytes;
