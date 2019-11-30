@@ -1,9 +1,10 @@
-use super::framed::Fuse;
+use super::fuse::Fuse;
 use super::Decoder;
 
 use bytes::BytesMut;
 use futures::io::AsyncRead;
 use futures::{ready, Sink, Stream, TryStreamExt};
+use pin_project::pin_project;
 use std::io;
 use std::marker::Unpin;
 use std::ops::{Deref, DerefMut};
@@ -15,16 +16,18 @@ use std::task::{Context, Poll};
 /// # Example
 /// ```
 /// use futures_codec::{BytesCodec, FramedRead};
-/// use futures::{executor, TryStreamExt};
+/// use futures::TryStreamExt;
 /// use bytes::Bytes;
 ///
-/// let buf = b"Hello World!";
-/// let mut framed = FramedRead::new(&buf[..], BytesCodec {});
+/// let buf = [3u8; 3];
+/// let mut framed = FramedRead::new(&buf[..], BytesCodec);
 ///
-/// executor::block_on(async move {
-///     let msg = framed.try_next().await.unwrap().unwrap();
-///     assert_eq!(msg, Bytes::from(&buf[..]));
-/// })
+/// # futures::executor::block_on(async move {
+/// if let Some(bytes) = framed.try_next().await? {
+///     assert_eq!(bytes, Bytes::from(&buf[..]));
+/// }
+/// # Ok::<_, std::io::Error>(())
+/// # }).unwrap();
 /// ```
 #[derive(Debug)]
 pub struct FramedRead<T, D> {
@@ -53,14 +56,14 @@ where
     /// Creates a new `FramedRead` transport with the given `Decoder`.
     pub fn new(inner: T, decoder: D) -> Self {
         Self {
-            inner: framed_read_2(Fuse(inner, decoder)),
+            inner: framed_read_2(Fuse::new(inner, decoder)),
         }
     }
 
     /// Release the I/O and Decoder
     pub fn release(self: Self) -> (T, D) {
         let fuse = self.inner.release();
-        (fuse.0, fuse.1)
+        (fuse.t, fuse.u)
     }
 }
 
@@ -76,8 +79,10 @@ where
     }
 }
 
+#[pin_project]
 #[derive(Debug)]
 pub struct FramedRead2<T> {
+    #[pin]
     inner: T,
     buffer: BytesMut,
 }
@@ -155,17 +160,17 @@ where
 {
     type Error = T::Error;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_ready(cx)
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_ready(cx)
     }
-    fn start_send(mut self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
-        Pin::new(&mut self.inner).start_send(item)
+    fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
+        self.project().inner.start_send(item)
     }
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_flush(cx)
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_flush(cx)
     }
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        Pin::new(&mut self.inner).poll_close(cx)
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        self.project().inner.poll_close(cx)
     }
 }
 

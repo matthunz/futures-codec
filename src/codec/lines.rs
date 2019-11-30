@@ -1,24 +1,24 @@
 use crate::{Decoder, Encoder};
 use bytes::{BufMut, BytesMut};
-use std::io::{Error, ErrorKind};
 use memchr::memchr;
+use std::io::{Error, ErrorKind};
 
 /// A simple `Codec` implementation that splits up data into lines.
 ///
 /// ```rust
-/// use futures::executor;
-/// use futures::stream::StreamExt; // for lines.next()
+/// # futures::executor::block_on(async move {
+/// use futures::stream::TryStreamExt; // for lines.try_next()
 /// use futures_codec::{FramedRead, LinesCodec};
 ///
 /// let input = "hello\nworld\nthis\nis\ndog\n".as_bytes();
-/// let mut lines = FramedRead::new(input, LinesCodec {});
-/// executor::block_on(async move {
-///     while let Some(line) = lines.next().await {
-///         println!("{}", line.unwrap());
-///     }
-/// });
+/// let mut lines = FramedRead::new(input, LinesCodec);
+/// while let Some(line) = lines.try_next().await? {
+///     println!("{}", line);
+/// }
+/// # Ok::<_, std::io::Error>(())
+/// # }).unwrap();
 /// ```
-pub struct LinesCodec {}
+pub struct LinesCodec;
 
 impl Encoder for LinesCodec {
     type Item = String;

@@ -6,24 +6,23 @@
 //! Framed streams are also known as `transports`.
 //!
 //! ```
-//! # use futures::{executor, SinkExt, TryStreamExt};
-//! # use futures::io::Cursor;
+//! # futures::executor::block_on(async move {
+//! use futures::TryStreamExt;
+//! use futures::io::Cursor;
 //! use futures_codec::{LinesCodec, Framed};
 //!
-//! async move {
-//!     # let mut buf = vec![];
-//!     # let stream = Cursor::new(&mut buf);
-//!     // let stream = ...
-//!     let mut framed = Framed::new(stream, LinesCodec {});
+//! let io = Cursor::new(Vec::new());
+//! let mut framed = Framed::new(io, LinesCodec);
 //!
-//!     while let Some(line) = framed.try_next().await.unwrap() {
-//!         println!("{:?}", line);
-//!     }
-//! };
+//! while let Some(line) = framed.try_next().await? {
+//!     dbg!(line);
+//! }
+//! # Ok::<_, std::io::Error>(())
+//! # }).unwrap();
 //! ```
 
 mod codec;
-pub use codec::{BytesCodec, LinesCodec, LengthCodec};
+pub use codec::{BytesCodec, LengthCodec, LinesCodec};
 
 mod decoder;
 pub use decoder::Decoder;
@@ -39,3 +38,5 @@ pub use framed_read::FramedRead;
 
 mod framed_write;
 pub use framed_write::FramedWrite;
+
+mod fuse;

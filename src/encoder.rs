@@ -1,4 +1,4 @@
-use super::framed::Fuse;
+use super::fuse::Fuse;
 use bytes::BytesMut;
 use std::io::Error;
 
@@ -18,6 +18,6 @@ impl<T, U: Encoder> Encoder for Fuse<T, U> {
     type Error = U::Error;
 
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        self.1.encode(item, dst)
+        self.u.encode(item, dst)
     }
 }

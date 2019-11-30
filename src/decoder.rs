@@ -1,5 +1,5 @@
-use super::framed::Fuse;
 use super::framed_write::FramedWrite2;
+use super::fuse::Fuse;
 use bytes::BytesMut;
 use std::io::Error;
 
@@ -19,7 +19,7 @@ impl<T, U: Decoder> Decoder for Fuse<T, U> {
     type Error = U::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        self.1.decode(src)
+        self.u.decode(src)
     }
 }
 
