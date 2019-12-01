@@ -125,27 +125,28 @@ where
 
         let mut buf = [0u8; INITIAL_CAPACITY];
 
-        let n = ready!(Pin::new(&mut this.inner).poll_read(cx, &mut buf))?;
-        this.buffer.extend_from_slice(&buf[..n]);
+        loop {
+            let n = ready!(Pin::new(&mut this.inner).poll_read(cx, &mut buf))?;
+            this.buffer.extend_from_slice(&buf[..n]);
 
-        let ended = n == 0;
+            let ended = n == 0;
 
-        match this.inner.decode(&mut this.buffer)? {
-            Some(item) => Poll::Ready(Some(Ok(item))),
-            None if ended => Poll::Ready(if this.buffer.is_empty() {
-                None
-            } else {
-                // this is the end of the input but there are bytes left
-                // maybe do something like tokio's `decode_eof` here instead?
-                Some(Err(io::Error::new(
-                    io::ErrorKind::UnexpectedEof,
-                    "bytes remaining in stream",
-                )
-                .into()))
-            }),
-            _ => {
-                cx.waker().wake_by_ref();
-                Poll::Pending
+            match this.inner.decode(&mut this.buffer)? {
+                Some(item) => return Poll::Ready(Some(Ok(item))),
+                None if ended => {
+                    if this.buffer.is_empty() {
+                        return Poll::Ready(None);
+                    } else {
+                        // this is the end of the input but there are bytes left
+                        // maybe do something like tokio's `decode_eof` here instead?
+                        return Poll::Ready(Some(Err(io::Error::new(
+                            io::ErrorKind::UnexpectedEof,
+                            "bytes remaining in stream",
+                        )
+                        .into())));
+                    }
+                }
+                _ => continue,
             }
         }
     }
