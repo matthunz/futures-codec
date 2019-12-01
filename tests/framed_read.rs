@@ -2,7 +2,7 @@ use bytes::BytesMut;
 use futures::executor;
 use futures::stream::StreamExt;
 use futures::AsyncRead;
-use futures_codec::{FramedRead, LinesCodec, Decoder};
+use futures_codec::{Decoder, FramedRead, LinesCodec};
 use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -69,7 +69,7 @@ impl Decoder for AllTheAs {
             let buf = src.split_to(1);
             let c = char::from(buf[0]);
             if c == 'a' {
-                return Ok(Some(c))
+                return Ok(Some(c));
             }
         }
         Ok(None)
