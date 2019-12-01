@@ -44,7 +44,7 @@ struct OneByteAtATime<'a> {
 impl AsyncRead for OneByteAtATime<'_> {
     fn poll_read(
         mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
+        _cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
         if self.input.is_empty() {
@@ -52,7 +52,6 @@ impl AsyncRead for OneByteAtATime<'_> {
         } else {
             buf[0] = self.input[0];
             self.input = &self.input[1..];
-            cx.waker().wake_by_ref(); // immediately ready to provide more data!
             Poll::Ready(Ok(1))
         }
     }

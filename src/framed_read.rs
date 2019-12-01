@@ -143,7 +143,10 @@ where
                 )
                 .into()))
             }),
-            _ => Poll::Pending,
+            _ => {
+                cx.waker().wake_by_ref();
+                Poll::Pending
+            }
         }
     }
 }
