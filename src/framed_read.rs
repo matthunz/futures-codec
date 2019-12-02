@@ -129,12 +129,16 @@ where
             let n = ready!(Pin::new(&mut this.inner).poll_read(cx, &mut buf))?;
             this.buffer.extend_from_slice(&buf[..n]);
 
+            let ended = n == 0;
+
             match this.inner.decode(&mut this.buffer)? {
                 Some(item) => return Poll::Ready(Some(Ok(item))),
-                None => {
+                None if ended => {
                     if this.buffer.is_empty() {
                         return Poll::Ready(None);
-                    } else if n == 0 {
+                    } else {
+                        // this is the end of the input but there are bytes left
+                        // maybe do something like tokio's `decode_eof` here instead?
                         return Poll::Ready(Some(Err(io::Error::new(
                             io::ErrorKind::UnexpectedEof,
                             "bytes remaining in stream",
@@ -142,6 +146,7 @@ where
                         .into())));
                     }
                 }
+                _ => continue,
             }
         }
     }
