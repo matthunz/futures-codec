@@ -1,6 +1,6 @@
 use super::fuse::Fuse;
 use super::Encoder;
-use bytes::BytesMut;
+use bytes::{Buf, BytesMut};
 use futures::io::{AsyncRead, AsyncWrite};
 use futures::{ready, Sink};
 use pin_project::pin_project;
