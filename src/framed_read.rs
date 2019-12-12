@@ -17,14 +17,14 @@ use std::task::{Context, Poll};
 /// ```
 /// use futures_codec::{BytesCodec, FramedRead};
 /// use futures::TryStreamExt;
-/// use bytes::Bytes;
+/// use bytes::{Bytes};
 ///
 /// let buf = [3u8; 3];
 /// let mut framed = FramedRead::new(&buf[..], BytesCodec);
 ///
 /// # futures::executor::block_on(async move {
 /// if let Some(bytes) = framed.try_next().await? {
-///     assert_eq!(bytes, Bytes::from(&buf[..]));
+///     assert_eq!(bytes, Bytes::copy_from_slice(&buf[..]));
 /// }
 /// # Ok::<_, std::io::Error>(())
 /// # }).unwrap();

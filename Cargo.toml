@@ -13,7 +13,7 @@ keywords = ["future", "futures", "async", "codec"]
 categories = ["asynchronous", "network-programming"]
 
 [dependencies]
-bytes = "0.4.12"
+bytes = "0.5.2"
 futures = "0.3.1"
 memchr = "2.2.1"
 pin-project = "0.4.6"

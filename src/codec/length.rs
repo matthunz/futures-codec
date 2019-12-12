@@ -1,5 +1,5 @@
 use crate::{Decoder, Encoder};
-use bytes::{BigEndian, BufMut, ByteOrder, Bytes, BytesMut};
+use bytes::{Bytes, BytesMut, Buf, BufMut};
 use std::io::Error;
 
 const U64_LENGTH: usize = std::mem::size_of::<u64>();
@@ -52,7 +52,7 @@ impl Encoder for LengthCodec {
 
     fn encode(&mut self, src: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         dst.reserve(U64_LENGTH + src.len());
-        dst.put_u64_be(src.len() as u64);
+        dst.put_u64(src.len() as u64);
         dst.extend_from_slice(&src);
         Ok(())
     }
@@ -67,10 +67,8 @@ impl Decoder for LengthCodec {
             return Ok(None);
         }
 
-        let len = BigEndian::read_u64(&src[..U64_LENGTH]) as usize;
-
+        let len = src.get_u64() as usize;
         if src.len() - U64_LENGTH >= len {
-            src.advance(U64_LENGTH);
             Ok(Some(src.split_to(len).freeze()))
         } else {
             Ok(None)
