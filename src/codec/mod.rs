@@ -8,7 +8,7 @@ mod lines;
 pub use self::lines::LinesCodec;
 
 #[cfg(feature = "json")] mod json;
-#[cfg(feature = "json")] pub use self::json::JsonCodec;
+#[cfg(feature = "json")] pub use self::json::{JsonCodec, JsonCodecError};
 
 #[cfg(feature = "cbor")] mod cbor;
-#[cfg(feature = "cbor")] pub use self::cbor::CborCodec;
+#[cfg(feature = "cbor")] pub use self::cbor::{CborCodec, CborCodecError};
