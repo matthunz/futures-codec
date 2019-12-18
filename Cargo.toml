@@ -12,8 +12,27 @@ documentation = "https://docs.rs/crate/futures_codec"
 keywords = ["future", "futures", "async", "codec"]
 categories = ["asynchronous", "network-programming"]
 
+[features]
+json = [ "serde", "serde_json" ]
+cbor = [ "serde", "serde_cbor" ]
+default = [ "json", "cbor" ]
+
 [dependencies]
+
 bytes = "0.5.2"
 futures = "0.3.1"
 memchr = "2.2.1"
 pin-project = "0.4.6"
+
+[dependencies.serde]
+version = '1.0.103'
+optional = true
+features = [ "serde_derive" ]
+
+[dependencies.serde_json]
+version = '1.0.42'
+optional = true
+
+[dependencies.serde_cbor]
+version = '0.10.2'
+optional = true

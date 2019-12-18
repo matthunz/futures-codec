@@ -24,6 +24,9 @@
 mod codec;
 pub use codec::{BytesCodec, LengthCodec, LinesCodec};
 
+#[cfg(feature = "json")] pub use codec::{JsonCodec, JsonCodecError};
+#[cfg(feature = "cbor")] pub use codec::{CborCodec, CborCodecError};
+
 mod decoder;
 pub use decoder::Decoder;
 
