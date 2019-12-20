@@ -75,3 +75,23 @@ impl Decoder for LengthCodec {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod decode {
+        use super::*;
+
+        #[test]
+        fn it_returns_bytes_withouth_length_header() {
+            let mut codec = LengthCodec{ };
+
+            let mut src = BytesMut::with_capacity(5);
+            src.put(&[0, 0, 0, 0, 0, 0, 0, 3u8, 1, 2, 3, 4][..]);
+            let item = codec.decode(&mut src).unwrap();
+
+            assert!(item == Some(Bytes::from(&[1u8, 2, 3][..])));
+        }
+    }
+}
