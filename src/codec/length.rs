@@ -67,8 +67,13 @@ impl Decoder for LengthCodec {
             return Ok(None);
         }
 
-        let len = src.get_u64() as usize;
+        let mut len_bytes = [0u8; U64_LENGTH];
+        len_bytes.copy_from_slice(&src[..U64_LENGTH]);
+        let len = u64::from_be_bytes(len_bytes) as usize;
+
         if src.len() - U64_LENGTH >= len {
+            // Skip the length header we already read.
+            src.advance(U64_LENGTH);
             Ok(Some(src.split_to(len).freeze()))
         } else {
             Ok(None)
