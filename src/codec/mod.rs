@@ -12,3 +12,6 @@ pub use self::lines::LinesCodec;
 
 #[cfg(feature = "cbor")] mod cbor;
 #[cfg(feature = "cbor")] pub use self::cbor::{CborCodec, CborCodecError};
+
+#[cfg(feature = "bincode")] mod serde;
+#[cfg(feature = "bincode")] pub use self::serde::SerdeCodec;

@@ -15,7 +15,8 @@ categories = ["asynchronous", "network-programming"]
 [features]
 json = [ "serde", "serde_json" ]
 cbor = [ "serde", "serde_cbor" ]
-default = [ "json", "cbor" ]
+serde_bincode = [ "serde", "bincode" ]
+default = [ "json", "cbor", "serde_bincode" ]
 
 [dependencies]
 
@@ -35,4 +36,8 @@ optional = true
 
 [dependencies.serde_cbor]
 version = '0.10.2'
+optional = true
+
+[dependencies.bincode]
+version = "1.2.1"
 optional = true

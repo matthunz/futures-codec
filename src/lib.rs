@@ -22,7 +22,7 @@
 //! ```
 
 mod codec;
-pub use codec::{BytesCodec, LengthCodec, LinesCodec};
+pub use codec::{BytesCodec, LengthCodec, LinesCodec, SerdeCodec};
 
 #[cfg(feature = "json")] pub use codec::{JsonCodec, JsonCodecError};
 #[cfg(feature = "cbor")] pub use codec::{CborCodec, CborCodecError};
