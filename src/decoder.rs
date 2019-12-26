@@ -12,6 +12,15 @@ pub trait Decoder {
 
     /// Decode an item from the src `BytesMut` into an item
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error>;
+
+    /// Called when the input stream reaches EOF, signaling a last attempt to decode
+    ///
+    /// # Notes
+    ///
+    /// The default implementation of this method invokes the `Decoder::decode` method.
+    fn decode_eof(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        self.decode(src)
+    }
 }
 
 impl<T, U: Decoder> Decoder for Fuse<T, U> {
@@ -21,6 +30,10 @@ impl<T, U: Decoder> Decoder for Fuse<T, U> {
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         self.u.decode(src)
     }
+
+    fn decode_eof(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        self.u.decode_eof(src)
+    }
 }
 
 impl<T: Decoder> Decoder for FramedWrite2<T> {
@@ -29,5 +42,9 @@ impl<T: Decoder> Decoder for FramedWrite2<T> {
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         self.inner.decode(src)
+    }
+
+    fn decode_eof(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        self.inner.decode_eof(src)
     }
 }
