@@ -137,13 +137,16 @@ where
                     if this.buffer.is_empty() {
                         return Poll::Ready(None);
                     } else {
-                        // this is the end of the input but there are bytes left
-                        // maybe do something like tokio's `decode_eof` here instead?
-                        return Poll::Ready(Some(Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "bytes remaining in stream",
-                        )
-                        .into())));
+                        match this.inner.decode_eof(&mut this.buffer)? {
+                            Some(item) => return Poll::Ready(Some(Ok(item))),
+                            None => {
+                                return Poll::Ready(Some(Err(io::Error::new(
+                                    io::ErrorKind::UnexpectedEof,
+                                    "bytes remaining in stream",
+                                )
+                                .into())));
+                            }
+                        }
                     }
                 }
                 _ => continue,
