@@ -13,12 +13,11 @@ keywords = ["future", "futures", "async", "codec"]
 categories = ["asynchronous", "network-programming"]
 
 [features]
+default = []
 json = [ "serde", "serde_json" ]
 cbor = [ "serde", "serde_cbor" ]
-default = [ "json", "cbor" ]
 
 [dependencies]
-
 bytes = "0.5.2"
 futures = "0.3.1"
 memchr = "2.2.1"
@@ -36,3 +35,6 @@ optional = true
 [dependencies.serde_cbor]
 version = '0.10.2'
 optional = true
+
+[package.metadata.docs.rs]
+all-features = true
