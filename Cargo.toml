@@ -1,7 +1,7 @@
 [package]
 name = "futures_codec"
 edition = "2018"
-version = "0.3.4"
+version = "0.4.0"
 authors = ["Matt Hunzinger <matthunz2@gmail.com>"]
 description = "Utilities for encoding and decoding frames using `async/await`"
 license = "MIT"
