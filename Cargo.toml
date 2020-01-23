@@ -12,9 +12,6 @@ documentation = "https://docs.rs/crate/futures_codec"
 keywords = ["future", "futures", "async", "codec"]
 categories = ["asynchronous", "network-programming"]
 
-[package.metadata.docs.rs]
-all-features = true
-
 [features]
 default = []
 json = [ "serde", "serde_json" ]
