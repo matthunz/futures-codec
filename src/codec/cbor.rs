@@ -1,11 +1,10 @@
-
-use std::marker::PhantomData;
 use std::io::Error as IoError;
+use std::marker::PhantomData;
 
 use crate::{Decoder, Encoder};
-use bytes::{Buf, BytesMut, BufMut};
+use bytes::{Buf, BufMut, BytesMut};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_cbor::Error as CborError;
 
 /// A codec for JSON encoding and decoding using serde_cbor
@@ -15,7 +14,7 @@ use serde_cbor::Error as CborError;
 /// # use futures::io::Cursor;
 /// use serde::{Serialize, Deserialize};
 /// use futures_codec::{CborCodec, Framed};
-/// 
+///
 /// #[derive(Serialize, Deserialize)]
 /// struct Something {
 ///     pub data: u16,
@@ -34,8 +33,7 @@ use serde_cbor::Error as CborError;
 /// };
 /// ```
 #[derive(Debug, PartialEq)]
-pub struct CborCodec<Enc, Dec> 
-{
+pub struct CborCodec<Enc, Dec> {
     enc: PhantomData<Enc>,
     dec: PhantomData<Dec>,
 }
@@ -61,19 +59,22 @@ impl From<CborError> for CborCodecError {
     }
 }
 
-impl <Enc, Dec>CborCodec<Enc, Dec> 
-where 
+impl<Enc, Dec> CborCodec<Enc, Dec>
+where
     for<'de> Dec: Deserialize<'de> + 'static,
     for<'de> Enc: Serialize + 'static,
 {
     /// Creates a new `CborCodec` with the associated types
-    pub fn new() -> CborCodec<Enc, Dec> { 
-        CborCodec {enc: PhantomData, dec: PhantomData}  
+    pub fn new() -> CborCodec<Enc, Dec> {
+        CborCodec {
+            enc: PhantomData,
+            dec: PhantomData,
+        }
     }
 }
 
-impl <Enc, Dec>Clone for CborCodec<Enc, Dec> 
-where 
+impl<Enc, Dec> Clone for CborCodec<Enc, Dec>
+where
     for<'de> Dec: Deserialize<'de> + 'static,
     for<'de> Enc: Serialize + 'static,
 {
@@ -84,8 +85,8 @@ where
 }
 
 /// Decoder impl parses cbor objects from bytes
-impl <Enc, Dec> Decoder for CborCodec<Enc, Dec> 
-where 
+impl<Enc, Dec> Decoder for CborCodec<Enc, Dec>
+where
     for<'de> Dec: Deserialize<'de> + 'static,
     for<'de> Enc: Serialize + 'static,
 {
@@ -93,7 +94,6 @@ where
     type Error = CborCodecError;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-
         // Build deserializer
         let mut de = serde_cbor::Deserializer::from_slice(&buf);
 
@@ -117,10 +117,9 @@ where
     }
 }
 
-
 /// Encoder impl encodes object streams to bytes
-impl <Enc, Dec>Encoder for CborCodec<Enc, Dec> 
-where 
+impl<Enc, Dec> Encoder for CborCodec<Enc, Dec>
+where
     for<'de> Dec: Deserialize<'de> + 'static,
     for<'de> Enc: Serialize + 'static,
 {
@@ -130,7 +129,7 @@ where
     fn encode(&mut self, data: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
         // Encode cbor
         let j = serde_cbor::to_vec(&data)?;
-        
+
         // Write to buffer
         buf.reserve(j.len());
         buf.put_slice(&j);
@@ -139,14 +138,13 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use bytes::BytesMut;
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
 
+    use super::CborCodec;
     use crate::{Decoder, Encoder};
-    use super::{CborCodec};
 
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
     struct TestStruct {
@@ -159,7 +157,10 @@ mod test {
         let mut codec = CborCodec::<TestStruct, TestStruct>::new();
         let mut buff = BytesMut::new();
 
-        let item1 = TestStruct{name: "Test name".to_owned(), data: 16};
+        let item1 = TestStruct {
+            name: "Test name".to_owned(),
+            data: 16,
+        };
         codec.encode(item1.clone(), &mut buff).unwrap();
 
         let item2 = codec.decode(&mut buff).unwrap().unwrap();
@@ -175,7 +176,10 @@ mod test {
         let mut codec = CborCodec::<TestStruct, TestStruct>::new();
         let mut buff = BytesMut::new();
 
-        let item1 = TestStruct{name: "Test name".to_owned(), data: 34};
+        let item1 = TestStruct {
+            name: "Test name".to_owned(),
+            data: 34,
+        };
         codec.encode(item1.clone(), &mut buff).unwrap();
 
         let mut start = buff.clone().split_to(4);

@@ -1,10 +1,9 @@
-
 use std::marker::PhantomData;
 
 use crate::{Decoder, Encoder};
-use bytes::{Buf, BytesMut, BufMut};
+use bytes::{Buf, BufMut, BytesMut};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json;
 
 /// A codec for JSON encoding and decoding using serde_json
@@ -14,7 +13,7 @@ use serde_json;
 /// # use futures::io::Cursor;
 /// use serde::{Serialize, Deserialize};
 /// use futures_codec::{JsonCodec, Framed};
-/// 
+///
 /// #[derive(Serialize, Deserialize)]
 /// struct Something {
 ///     pub data: u16,
@@ -33,8 +32,7 @@ use serde_json;
 /// };
 /// ```
 #[derive(Debug, PartialEq)]
-pub struct JsonCodec<Enc, Dec> 
-{
+pub struct JsonCodec<Enc, Dec> {
     enc: PhantomData<Enc>,
     dec: PhantomData<Dec>,
 }
@@ -60,19 +58,22 @@ impl From<serde_json::Error> for JsonCodecError {
     }
 }
 
-impl <Enc, Dec>JsonCodec<Enc, Dec> 
-where 
+impl<Enc, Dec> JsonCodec<Enc, Dec>
+where
     for<'de> Dec: Deserialize<'de> + 'static,
     for<'de> Enc: Serialize + 'static,
 {
     /// Creates a new `JsonCodec` with the associated types
-    pub fn new() -> JsonCodec<Enc, Dec> { 
-        JsonCodec {enc: PhantomData, dec: PhantomData}  
+    pub fn new() -> JsonCodec<Enc, Dec> {
+        JsonCodec {
+            enc: PhantomData,
+            dec: PhantomData,
+        }
     }
 }
 
-impl <Enc, Dec>Clone for JsonCodec<Enc, Dec> 
-where 
+impl<Enc, Dec> Clone for JsonCodec<Enc, Dec>
+where
     for<'de> Dec: Deserialize<'de> + 'static,
     for<'de> Enc: Serialize + 'static,
 {
@@ -83,8 +84,8 @@ where
 }
 
 /// Decoder impl parses json objects from bytes
-impl <Enc, Dec> Decoder for JsonCodec<Enc, Dec> 
-where 
+impl<Enc, Dec> Decoder for JsonCodec<Enc, Dec>
+where
     for<'de> Dec: Deserialize<'de> + 'static,
     for<'de> Enc: Serialize + 'static,
 {
@@ -92,7 +93,6 @@ where
     type Error = JsonCodecError;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-
         // Build streaming JSON iterator over data
         let de = serde_json::Deserializer::from_slice(&buf);
         let mut iter = de.into_iter::<Dec>();
@@ -115,10 +115,9 @@ where
     }
 }
 
-
 /// Encoder impl encodes object streams to bytes
-impl <Enc, Dec>Encoder for JsonCodec<Enc, Dec> 
-where 
+impl<Enc, Dec> Encoder for JsonCodec<Enc, Dec>
+where
     for<'de> Dec: Deserialize<'de> + 'static,
     for<'de> Enc: Serialize + 'static,
 {
@@ -128,7 +127,7 @@ where
     fn encode(&mut self, data: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
         // Encode json
         let j = serde_json::to_string(&data)?;
-        
+
         // Write to buffer
         buf.reserve(j.len());
         buf.put_slice(&j.as_bytes());
@@ -137,14 +136,13 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use bytes::BytesMut;
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
 
+    use super::JsonCodec;
     use crate::{Decoder, Encoder};
-    use super::{JsonCodec};
 
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
     struct TestStruct {
@@ -157,7 +155,10 @@ mod test {
         let mut codec = JsonCodec::<TestStruct, TestStruct>::new();
         let mut buff = BytesMut::new();
 
-        let item1 = TestStruct{name: "Test name".to_owned(), data: 16};
+        let item1 = TestStruct {
+            name: "Test name".to_owned(),
+            data: 16,
+        };
         codec.encode(item1.clone(), &mut buff).unwrap();
 
         let item2 = codec.decode(&mut buff).unwrap().unwrap();
@@ -173,7 +174,10 @@ mod test {
         let mut codec = JsonCodec::<TestStruct, TestStruct>::new();
         let mut buff = BytesMut::new();
 
-        let item1 = TestStruct{name: "Test name".to_owned(), data: 34};
+        let item1 = TestStruct {
+            name: "Test name".to_owned(),
+            data: 34,
+        };
         codec.encode(item1.clone(), &mut buff).unwrap();
 
         let mut start = buff.clone().split_to(4);

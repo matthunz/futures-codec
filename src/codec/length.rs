@@ -1,5 +1,5 @@
 use crate::{Decoder, Encoder};
-use bytes::{Bytes, BytesMut, Buf, BufMut};
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 use std::io::Error;
 
 const U64_LENGTH: usize = std::mem::size_of::<u64>();
@@ -90,7 +90,7 @@ mod tests {
 
         #[test]
         fn it_returns_bytes_withouth_length_header() {
-            let mut codec = LengthCodec{ };
+            let mut codec = LengthCodec {};
 
             let mut src = BytesMut::with_capacity(5);
             src.put(&[0, 0, 0, 0, 0, 0, 0, 3u8, 1, 2, 3, 4][..]);

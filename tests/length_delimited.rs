@@ -19,7 +19,8 @@ fn same_msgs_are_received_as_were_sent() {
     cur.set_position(0);
     let framed = Framed::new(cur, LengthCodec {});
 
-    let recv_msgs = framed.take(3)
+    let recv_msgs = framed
+        .take(3)
         .map(|res| res.unwrap())
         .map(|buf| String::from_utf8(buf.to_vec()).unwrap())
         .collect::<Vec<_>>();

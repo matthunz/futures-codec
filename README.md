@@ -5,8 +5,13 @@ Utilities for encoding and decoding frames using async/await.
 Contains adapters to go from streams of bytes, `AsyncRead` and `AsyncWrite`,
 to framed streams implementing `Sink` and `Stream`. Framed streams are also known as transports.
 
-[Docs](https://docs.rs/futures_codec) | [Crate](https://crates.io/crates/futures_codec)
+![https://crates.io/crates/futures_codec](https://img.shields.io/crates/v/futures_codec.svg)
+![https://travis-ci.com/matthunz/futures-codec](https://travis-ci.com/matthunz/futures-codec.svg)
+![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg) |
+[Docs](https://docs.rs/futures_codec)
 
+
+### Example
 ```rust
 use futures_codec::{LinesCodec, Framed};
 
