@@ -32,10 +32,11 @@ use serde_cbor::Error as CborError;
 ///     }
 /// };
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CborCodec<Enc, Dec> {
     enc: PhantomData<Enc>,
     dec: PhantomData<Dec>,
+    packed: bool,
 }
 
 /// JSON Codec error enumeration
@@ -69,18 +70,20 @@ where
         CborCodec {
             enc: PhantomData,
             dec: PhantomData,
+            packed: false,
         }
     }
-}
 
-impl<Enc, Dec> Clone for CborCodec<Enc, Dec>
-where
-    for<'de> Dec: Deserialize<'de> + 'static,
-    for<'de> Enc: Serialize + 'static,
-{
-    /// Clone creates a new instance of the `CborCodec`
-    fn clone(&self) -> CborCodec<Enc, Dec> {
-        CborCodec::new()
+    /// Encode CBOR values in packed format.
+    ///
+    /// In the packed format enum variant names and field names are replaced
+    /// with numeric indices to conserve space. This may, however, reduce
+    /// portability. See [section 3.7] of the CBOR specification.
+    ///
+    /// [section 3.7]: https://tools.ietf.org/html/rfc7049#section-3.7
+    pub fn packed_format(mut self) -> Self {
+        self.packed = true;
+        self
     }
 }
 
@@ -128,7 +131,11 @@ where
 
     fn encode(&mut self, data: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
         // Encode cbor
-        let j = serde_cbor::to_vec(&data)?;
+        let j = if self.packed {
+            serde_cbor::to_vec(&data)?
+        } else {
+            serde_cbor::ser::to_vec_packed(&data)?
+        };
 
         // Write to buffer
         buf.reserve(j.len());
@@ -188,5 +195,20 @@ mod test {
         codec.decode(&mut buff).unwrap().unwrap();
 
         assert_eq!(buff.len(), 0);
+    }
+
+    #[test]
+    fn cbor_codec_packed_encode_decode() {
+        let mut codec = CborCodec::<TestStruct, TestStruct>::new().packed_format();
+        let mut buff = BytesMut::new();
+
+        let item1 = TestStruct {
+            name: "Test name".to_owned(),
+            data: 42,
+        };
+        codec.encode(item1.clone(), &mut buff).unwrap();
+
+        let item2 = codec.decode(&mut buff).unwrap().unwrap();
+        assert_eq!(item1, item2);
     }
 }
