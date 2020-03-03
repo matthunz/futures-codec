@@ -135,9 +135,9 @@ where
     fn encode(&mut self, data: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
         // Encode cbor
         let j = if self.packed {
-            serde_cbor::to_vec_packed(&data)?
+            serde_cbor::ser::to_vec_packed(&data)?
         } else {
-            serde_cbor::ser::to_vec(&data)?
+            serde_cbor::to_vec(&data)?
         };
 
         // Write to buffer
@@ -202,7 +202,7 @@ mod test {
 
     #[test]
     fn cbor_codec_packed_encode_decode() {
-        let mut codec = CborCodec::<TestStruct, TestStruct>::new().packed_format();
+        let mut codec = CborCodec::<TestStruct, TestStruct>::new().set_packed(true);
         let mut buff = BytesMut::new();
 
         let item1 = TestStruct {
