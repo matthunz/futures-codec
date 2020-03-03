@@ -74,15 +74,18 @@ where
         }
     }
 
-    /// Encode CBOR values in packed format.
+    /// When `true`, encode CBOR values in packed format.
     ///
-    /// In the packed format enum variant names and field names are replaced
+    /// In the packed format enum variant and struct field names are replaced
     /// with numeric indices to conserve space. This may, however, reduce
     /// portability. See [section 3.7] of the CBOR specification.
     ///
+    /// The default value is `false`, i.e. variant and field names are encoded
+    /// as UTF-8 strings.
+    ///
     /// [section 3.7]: https://tools.ietf.org/html/rfc7049#section-3.7
-    pub fn packed_format(mut self) -> Self {
-        self.packed = true;
+    pub fn set_packed(mut self, packed: bool) -> Self {
+        self.packed = packed;
         self
     }
 }
