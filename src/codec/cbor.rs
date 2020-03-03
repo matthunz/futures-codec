@@ -132,9 +132,9 @@ where
     fn encode(&mut self, data: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
         // Encode cbor
         let j = if self.packed {
-            serde_cbor::to_vec(&data)?
+            serde_cbor::to_vec_packed(&data)?
         } else {
-            serde_cbor::ser::to_vec_packed(&data)?
+            serde_cbor::ser::to_vec(&data)?
         };
 
         // Write to buffer
