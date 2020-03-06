@@ -1,9 +1,8 @@
-use bytes::Bytes;
 use core::iter::Iterator;
 use futures::io::{AsyncWrite, Cursor};
 use futures::sink::SinkExt;
 use futures::{executor, stream, stream::StreamExt};
-use futures_codec::{BytesCodec, FramedWrite, LinesCodec};
+use futures_codec::{BytesCodec, FramedWrite, LinesCodec, Bytes};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 

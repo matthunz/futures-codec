@@ -23,6 +23,7 @@
 
 mod codec;
 pub use codec::{BytesCodec, LengthCodec, LinesCodec};
+pub use bytes::{Bytes, BytesMut};
 
 #[cfg(feature = "cbor")]
 pub use codec::{CborCodec, CborCodecError};
