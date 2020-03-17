@@ -1,8 +1,7 @@
-use bytes::BytesMut;
 use futures::executor;
 use futures::stream::StreamExt;
 use futures::AsyncRead;
-use futures_codec::{Decoder, FramedRead, LinesCodec};
+use futures_codec::{Decoder, FramedRead, LinesCodec, BytesMut};
 use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
