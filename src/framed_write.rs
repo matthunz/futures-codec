@@ -87,6 +87,31 @@ where
         let fuse = self.inner.release();
         (fuse.t, fuse.u)
     }
+
+    /// Consumes the `FramedWrite`, returning its underlying I/O stream.
+    ///
+    /// Note that care should be taken to not tamper with the underlying stream
+    /// of data coming in as it may corrupt the stream of frames otherwise
+    /// being worked with.
+    pub fn into_inner(self) -> T {
+        self.release().0
+    }
+
+    /// Returns a reference to the underlying encoder.
+    ///
+    /// Note that care should be taken to not tamper with the underlying encoder
+    /// as it may corrupt the stream of frames otherwise being worked with.
+    pub fn encoder(&self) -> &E {
+        &self.inner.u
+    }
+
+    /// Returns a mutable reference to the underlying encoder.
+    ///
+    /// Note that care should be taken to not tamper with the underlying encoder
+    /// as it may corrupt the stream of frames otherwise being worked with.
+    pub fn encoder_mut(&mut self) -> &mut E {
+        &mut self.inner.u
+    }
 }
 
 impl<T, E> Sink<E::Item> for FramedWrite<T, E>
