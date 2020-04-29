@@ -2,6 +2,7 @@ use super::framed_read::{framed_read_2, FramedRead2};
 use super::framed_write::{framed_write_2, FramedWrite2};
 use super::fuse::Fuse;
 use super::{Decoder, Encoder};
+use bytes::BytesMut;
 use futures::io::{AsyncRead, AsyncWrite};
 use futures::{Sink, Stream, TryStreamExt};
 use pin_project::pin_project;
@@ -72,6 +73,38 @@ where
     pub fn release(self: Self) -> (T, U) {
         let fuse = self.inner.release().release();
         (fuse.t, fuse.u)
+    }
+
+    /// Consumes the `Framed`, returning its underlying I/O stream.
+    ///
+    /// Note that care should be taken to not tamper with the underlying stream
+    /// of data coming in as it may corrupt the stream of frames otherwise
+    /// being worked with.
+    pub fn into_inner(self) -> T {
+        self.release().0
+    }
+
+    /// Returns a reference to the underlying codec wrapped by
+    /// `Framed`.
+    ///
+    /// Note that care should be taken to not tamper with the underlying codec
+    /// as it may corrupt the stream of frames otherwise being worked with.
+    pub fn codec(&self) -> &U {
+        &self.inner.u
+    }
+
+    /// Returns a mutable reference to the underlying codec wrapped by
+    /// `Framed`.
+    ///
+    /// Note that care should be taken to not tamper with the underlying codec
+    /// as it may corrupt the stream of frames otherwise being worked with.
+    pub fn codec_mut(&mut self) -> &mut U {
+        &mut self.inner.u
+    }
+
+    /// Returns a reference to the read buffer.
+    pub fn read_buffer(&self) -> &BytesMut {
+        self.inner.buffer()
     }
 }
 

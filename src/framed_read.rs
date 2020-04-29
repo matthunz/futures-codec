@@ -65,6 +65,36 @@ where
         let fuse = self.inner.release();
         (fuse.t, fuse.u)
     }
+
+    /// Consumes the `FramedRead`, returning its underlying I/O stream.
+    ///
+    /// Note that care should be taken to not tamper with the underlying stream
+    /// of data coming in as it may corrupt the stream of frames otherwise
+    /// being worked with.
+    pub fn into_inner(self) -> T {
+        self.release().0
+    }
+
+    /// Returns a reference to the underlying decoder.
+    ///
+    /// Note that care should be taken to not tamper with the underlying decoder
+    /// as it may corrupt the stream of frames otherwise being worked with.
+    pub fn decoder(&self) -> &D {
+        &self.inner.u
+    }
+
+    /// Returns a mutable reference to the underlying decoder.
+    ///
+    /// Note that care should be taken to not tamper with the underlying decoder
+    /// as it may corrupt the stream of frames otherwise being worked with.
+    pub fn decoder_mut(&mut self) -> &mut D {
+        &mut self.inner.u
+    }
+
+    /// Returns a reference to the read buffer.
+    pub fn read_buffer(&self) -> &BytesMut {
+        &self.inner.buffer
+    }
 }
 
 impl<T, D> Stream for FramedRead<T, D>
@@ -178,5 +208,9 @@ where
 impl<T> FramedRead2<T> {
     pub fn release(self: Self) -> T {
         self.inner
+    }
+
+    pub fn buffer(&self) -> &BytesMut {
+        &self.buffer
     }
 }
