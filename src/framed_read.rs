@@ -169,6 +169,7 @@ where
                     } else {
                         match this.inner.decode_eof(&mut this.buffer)? {
                             Some(item) => return Poll::Ready(Some(Ok(item))),
+                            None if this.buffer.is_empty() => return Poll::Ready(None),
                             None => {
                                 return Poll::Ready(Some(Err(io::Error::new(
                                     io::ErrorKind::UnexpectedEof,
