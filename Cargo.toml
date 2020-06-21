@@ -18,22 +18,22 @@ json = [ "serde", "serde_json" ]
 cbor = [ "serde", "serde_cbor" ]
 
 [dependencies]
-bytes = "0.5.2"
-futures = "0.3.1"
-memchr = "2.2.1"
-pin-project = "0.4.6"
+bytes = "0.5.4"
+futures = "0.3.5"
+memchr = "2.2.3"
+pin-project = "0.4.22"
 
 [dependencies.serde]
-version = '1.0.103'
+version = '1.0.113'
 optional = true
-features = [ "serde_derive" ]
+features = [ "derive" ]
 
 [dependencies.serde_json]
-version = '1.0.42'
+version = '1.0.55'
 optional = true
 
 [dependencies.serde_cbor]
-version = '0.10.2'
+version = '0.11.1'
 optional = true
 
 [package.metadata.docs.rs]
