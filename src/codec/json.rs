@@ -46,15 +46,33 @@ pub enum JsonCodecError {
     Json(serde_json::Error),
 }
 
+impl std::fmt::Display for JsonCodecError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JsonCodecError::Io(e) => write!(f, "I/O error: {}", e),
+            JsonCodecError::Json(e) => write!(f, "JSON error: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for JsonCodecError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            JsonCodecError::Io(ref e) => Some(e),
+            JsonCodecError::Json(ref e) => Some(e),
+        }
+    }
+}
+
 impl From<std::io::Error> for JsonCodecError {
     fn from(e: std::io::Error) -> JsonCodecError {
-        return JsonCodecError::Io(e);
+        JsonCodecError::Io(e)
     }
 }
 
 impl From<serde_json::Error> for JsonCodecError {
     fn from(e: serde_json::Error) -> JsonCodecError {
-        return JsonCodecError::Json(e);
+        JsonCodecError::Json(e)
     }
 }
 
