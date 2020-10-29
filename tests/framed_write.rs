@@ -2,7 +2,7 @@ use core::iter::Iterator;
 use futures::io::{AsyncWrite, Cursor};
 use futures::sink::SinkExt;
 use futures::{executor, stream, stream::StreamExt};
-use futures_codec::{BytesCodec, FramedWrite, LinesCodec, Bytes};
+use futures_codec::{Bytes, BytesCodec, FramedWrite, LinesCodec};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 

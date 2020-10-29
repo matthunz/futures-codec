@@ -22,8 +22,8 @@
 //! ```
 
 mod codec;
-pub use codec::{BytesCodec, LengthCodec, LinesCodec};
 pub use bytes::{Bytes, BytesMut};
+pub use codec::{BytesCodec, LengthCodec, LinesCodec};
 
 #[cfg(feature = "cbor")]
 pub use codec::{CborCodec, CborCodecError};

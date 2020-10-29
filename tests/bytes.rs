@@ -5,7 +5,7 @@ use futures_codec::{BytesCodec, Framed};
 #[test]
 fn decodes() {
     let mut buf = [0u8; 32];
-    let expected = buf.clone();
+    let expected = buf;
     let cur = Cursor::new(&mut buf[..]);
     let mut framed = Framed::new(cur, BytesCodec {});
 

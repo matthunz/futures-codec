@@ -3,43 +3,45 @@ use super::framed_write::{framed_write_2, FramedWrite2};
 use super::fuse::Fuse;
 use super::{Decoder, Encoder};
 use bytes::BytesMut;
-use futures::io::{AsyncRead, AsyncWrite};
-use futures::{Sink, Stream, TryStreamExt};
-use pin_project::pin_project;
+use futures_sink::Sink;
+use futures_util::io::{AsyncRead, AsyncWrite};
+use futures_util::stream::{Stream, TryStreamExt};
+use pin_project_lite::pin_project;
 use std::marker::Unpin;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-/// A unified `Stream` and `Sink` interface to an underlying I/O object,
-/// using the `Encoder` and `Decoder` traits to encode and decode frames.
-///
-/// # Example
-/// ```
-/// use bytes::Bytes;
-/// use futures::{SinkExt, TryStreamExt};
-/// use futures::io::Cursor;
-/// use futures_codec::{BytesCodec, Framed};
-///
-/// # futures::executor::block_on(async move {
-/// let cur = Cursor::new(vec![0u8; 12]);
-/// let mut framed = Framed::new(cur, BytesCodec {});
-///
-/// // Send bytes to `buf` through the `BytesCodec`
-/// let bytes = Bytes::from("Hello world!");
-/// framed.send(bytes).await?;
-///
-/// // Release the I/O and codec
-/// let (cur, _) = framed.release();
-/// assert_eq!(cur.get_ref(), b"Hello world!");
-/// # Ok::<_, std::io::Error>(())
-/// # }).unwrap();
-/// ```
-#[pin_project]
-#[derive(Debug)]
-pub struct Framed<T, U> {
-    #[pin]
-    inner: FramedRead2<FramedWrite2<Fuse<T, U>>>,
+pin_project! {
+    /// A unified `Stream` and `Sink` interface to an underlying I/O object,
+    /// using the `Encoder` and `Decoder` traits to encode and decode frames.
+    ///
+    /// # Example
+    /// ```
+    /// use bytes::Bytes;
+    /// use futures::{SinkExt, TryStreamExt};
+    /// use futures::io::Cursor;
+    /// use futures_codec::{BytesCodec, Framed};
+    ///
+    /// # futures::executor::block_on(async move {
+    /// let cur = Cursor::new(vec![0u8; 12]);
+    /// let mut framed = Framed::new(cur, BytesCodec {});
+    ///
+    /// // Send bytes to `buf` through the `BytesCodec`
+    /// let bytes = Bytes::from("Hello world!");
+    /// framed.send(bytes).await?;
+    ///
+    /// // Release the I/O and codec
+    /// let (cur, _) = framed.release();
+    /// assert_eq!(cur.get_ref(), b"Hello world!");
+    /// # Ok::<_, std::io::Error>(())
+    /// # }).unwrap();
+    /// ```
+    #[derive(Debug)]
+    pub struct Framed<T, U> {
+        #[pin]
+        inner: FramedRead2<FramedWrite2<Fuse<T, U>>>,
+    }
 }
 
 impl<T, U> Deref for Framed<T, U> {
@@ -70,7 +72,7 @@ where
     }
 
     /// Release the I/O and Codec
-    pub fn release(self: Self) -> (T, U) {
+    pub fn release(self) -> (T, U) {
         let fuse = self.inner.release().release();
         (fuse.t, fuse.u)
     }

@@ -2,9 +2,11 @@ use super::fuse::Fuse;
 use super::Decoder;
 
 use bytes::BytesMut;
-use futures::io::AsyncRead;
-use futures::{ready, Sink, Stream, TryStreamExt};
-use pin_project::pin_project;
+use futures_sink::Sink;
+use futures_util::io::AsyncRead;
+use futures_util::ready;
+use futures_util::stream::{Stream, TryStreamExt};
+use pin_project_lite::pin_project;
 use std::io;
 use std::marker::Unpin;
 use std::ops::{Deref, DerefMut};
@@ -61,7 +63,7 @@ where
     }
 
     /// Release the I/O and Decoder
-    pub fn release(self: Self) -> (T, D) {
+    pub fn release(self) -> (T, D) {
         let fuse = self.inner.release();
         (fuse.t, fuse.u)
     }
@@ -109,12 +111,13 @@ where
     }
 }
 
-#[pin_project]
-#[derive(Debug)]
-pub struct FramedRead2<T> {
-    #[pin]
-    inner: T,
-    buffer: BytesMut,
+pin_project! {
+    #[derive(Debug)]
+    pub struct FramedRead2<T> {
+        #[pin]
+        inner: T,
+        buffer: BytesMut,
+    }
 }
 
 impl<T> Deref for FramedRead2<T> {
@@ -207,7 +210,7 @@ where
 }
 
 impl<T> FramedRead2<T> {
-    pub fn release(self: Self) -> T {
+    pub fn release(self) -> T {
         self.inner
     }
 
