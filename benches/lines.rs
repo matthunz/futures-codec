@@ -4,7 +4,7 @@ extern crate test;
 
 use futures::{executor, TryStreamExt};
 use futures_codec::{FramedRead, LinesCodec};
-use std::io::Cursor;
+use futures::io::Cursor;
 
 #[bench]
 fn short(b: &mut test::Bencher) {
