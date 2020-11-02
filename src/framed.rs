@@ -70,7 +70,7 @@ where
     }
 
     /// Release the I/O and Codec
-    pub fn release(self: Self) -> (T, U) {
+    pub fn release(self) -> (T, U) {
         let fuse = self.inner.release().release();
         (fuse.t, fuse.u)
     }

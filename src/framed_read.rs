@@ -61,7 +61,7 @@ where
     }
 
     /// Release the I/O and Decoder
-    pub fn release(self: Self) -> (T, D) {
+    pub fn release(self) -> (T, D) {
         let fuse = self.inner.release();
         (fuse.t, fuse.u)
     }
@@ -207,7 +207,7 @@ where
 }
 
 impl<T> FramedRead2<T> {
-    pub fn release(self: Self) -> T {
+    pub fn release(self) -> T {
         self.inner
     }
 

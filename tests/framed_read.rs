@@ -16,7 +16,7 @@ impl AsyncRead for MockBurstySender {
         _cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        const MESSAGES: &'static [u8] = b"one\ntwo\n";
+        const MESSAGES: &[u8] = b"one\ntwo\n";
         if !self.sent && buf.len() >= MESSAGES.len() {
             self.sent = true;
             buf[0..MESSAGES.len()].clone_from_slice(MESSAGES);

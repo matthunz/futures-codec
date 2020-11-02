@@ -60,7 +60,7 @@ where
     ///
     /// See [`set_send_high_water_mark()`](#method.set_send_high_water_mark).
     pub fn send_high_water_mark(&self) -> usize {
-        return self.inner.high_water_mark;
+        self.inner.high_water_mark
     }
 
     /// Sets high-water mark for writes, in bytes
