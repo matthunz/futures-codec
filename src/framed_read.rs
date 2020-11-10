@@ -56,23 +56,42 @@ where
     /// Creates a new `FramedRead` transport with the given `Decoder`.
     pub fn new(inner: T, decoder: D) -> Self {
         Self {
-            inner: framed_read_2(Fuse::new(inner, decoder)),
+            inner: framed_read_2(Fuse::new(inner, decoder), None),
         }
     }
 
-    /// Release the I/O and Decoder
-    pub fn release(self: Self) -> (T, D) {
-        let fuse = self.inner.release();
-        (fuse.t, fuse.u)
+    /// Creates a new `FramedRead` from [`FramedReadParts`].
+    ///
+    /// See also [`FramedRead::into_parts`].
+    pub fn from_parts(FramedReadParts {
+        io, decoder, buffer, ..
+    }: FramedReadParts<T, D>) -> Self {
+        Self {
+            inner: framed_read_2(Fuse::new(io, decoder), Some(buffer))
+        }
+    }
+
+    /// Consumes the `FramedRead`, returning its parts such that a
+    /// new `FramedRead` may be constructed, possibly with a different decoder.
+    ///
+    /// See also [`FramedRead::from_parts`].
+    pub fn into_parts(self) -> FramedReadParts<T, D> {
+        let (fuse, buffer) = self.inner.into_parts();
+        FramedReadParts {
+            io: fuse.t,
+            decoder: fuse.u,
+            buffer,
+            _priv: (),
+        }
     }
 
     /// Consumes the `FramedRead`, returning its underlying I/O stream.
     ///
-    /// Note that care should be taken to not tamper with the underlying stream
-    /// of data coming in as it may corrupt the stream of frames otherwise
-    /// being worked with.
+    /// Note that data that has already been read but not yet consumed
+    /// by the decoder is dropped. To retain any such potentially
+    /// buffered data, use [`FramedRead::into_parts()`].
     pub fn into_inner(self) -> T {
-        self.release().0
+        self.into_parts().io
     }
 
     /// Returns a reference to the underlying decoder.
@@ -133,10 +152,10 @@ impl<T> DerefMut for FramedRead2<T> {
 
 const INITIAL_CAPACITY: usize = 8 * 1024;
 
-pub fn framed_read_2<T>(inner: T) -> FramedRead2<T> {
+pub fn framed_read_2<T>(inner: T, buffer: Option<BytesMut>) -> FramedRead2<T> {
     FramedRead2 {
         inner,
-        buffer: BytesMut::with_capacity(INITIAL_CAPACITY),
+        buffer: buffer.unwrap_or_else(|| BytesMut::with_capacity(INITIAL_CAPACITY)),
     }
 }
 
@@ -207,11 +226,40 @@ where
 }
 
 impl<T> FramedRead2<T> {
-    pub fn release(self: Self) -> T {
-        self.inner
+    pub fn into_parts(self) -> (T, BytesMut) {
+        (self.inner, self.buffer)
     }
 
     pub fn buffer(&self) -> &BytesMut {
         &self.buffer
+    }
+}
+
+/// The parts obtained from (FramedRead::into_parts).
+pub struct FramedReadParts<T, D> {
+    /// The underlying I/O stream.
+    pub io: T,
+    /// The frame decoder.
+    pub decoder: D,
+    /// The buffer of data that has been read from `io` but not
+    /// yet consumed by `decoder`.
+    pub buffer: BytesMut,
+    /// Keep the constructor private.
+    _priv: (),
+}
+
+impl<T, D> FramedReadParts<T, D> {
+    /// Changes the decoder in `FramedReadParts`.
+    pub fn map_decoder<E, F>(self, f: F) -> FramedReadParts<T, E>
+    where
+        E: Decoder,
+        F: FnOnce(D) -> E,
+    {
+        FramedReadParts {
+            io: self.io,
+            decoder: f(self.decoder),
+            buffer: self.buffer,
+            _priv: (),
+        }
     }
 }

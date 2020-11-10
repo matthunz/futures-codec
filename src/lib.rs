@@ -37,12 +37,12 @@ mod encoder;
 pub use encoder::Encoder;
 
 mod framed;
-pub use framed::Framed;
+pub use framed::{Framed, FramedParts};
 
 mod framed_read;
-pub use framed_read::FramedRead;
+pub use framed_read::{FramedRead, FramedReadParts};
 
 mod framed_write;
-pub use framed_write::FramedWrite;
+pub use framed_write::{FramedWrite, FramedWriteParts};
 
 mod fuse;

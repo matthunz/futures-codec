@@ -29,8 +29,8 @@ use std::task::{Context, Poll};
 /// let bytes = Bytes::from("Hello world!");
 /// framed.send(bytes).await?;
 ///
-/// // Release the I/O and codec
-/// let (cur, _) = framed.release();
+/// // Drop down to the underlying I/O stream.
+/// let cur = framed.into_inner();
 /// assert_eq!(cur.get_ref(), b"Hello world!");
 /// # Ok::<_, std::io::Error>(())
 /// # }).unwrap();
@@ -65,23 +65,44 @@ where
     /// A codec is a type which implements `Decoder` and `Encoder`.
     pub fn new(inner: T, codec: U) -> Self {
         Self {
-            inner: framed_read_2(framed_write_2(Fuse::new(inner, codec))),
+            inner: framed_read_2(framed_write_2(Fuse::new(inner, codec), None), None),
         }
     }
 
-    /// Release the I/O and Codec
-    pub fn release(self: Self) -> (T, U) {
-        let fuse = self.inner.release().release();
-        (fuse.t, fuse.u)
+    /// Creates a new `Framed` from [`FramedParts`].
+    ///
+    /// See also [`Framed::into_parts`].
+    pub fn from_parts(FramedParts {
+        io, codec, write_buffer, read_buffer, ..
+    }: FramedParts<T, U>) -> Self {
+        let framed_write = framed_write_2(Fuse::new(io, codec), Some(write_buffer));
+        let framed_read = framed_read_2(framed_write, Some(read_buffer));
+        Self { inner: framed_read }
+    }
+
+    /// Consumes the `Framed`, returning its parts, such that a new
+    /// `Framed` may be constructed, possibly with a different codec.
+    ///
+    /// See also [`Framed::from_parts`].
+    pub fn into_parts(self) -> FramedParts<T, U> {
+        let (framed_write, read_buffer) = self.inner.into_parts();
+        let (fuse, write_buffer) = framed_write.into_parts();
+        FramedParts {
+            io: fuse.t,
+            codec: fuse.u,
+            read_buffer,
+            write_buffer,
+            _priv: (),
+        }
     }
 
     /// Consumes the `Framed`, returning its underlying I/O stream.
     ///
-    /// Note that care should be taken to not tamper with the underlying stream
-    /// of data coming in as it may corrupt the stream of frames otherwise
-    /// being worked with.
+    /// Note that data that has already been read or written but not yet
+    /// consumed by the decoder or flushed, respectively, is dropped.
+    /// To retain any such potentially buffered data, use [`Framed::into_parts()`].
     pub fn into_inner(self) -> T {
-        self.release().0
+        self.into_parts().io
     }
 
     /// Returns a reference to the underlying codec wrapped by
@@ -138,5 +159,38 @@ where
     }
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         self.project().inner.poll_close(cx)
+    }
+}
+
+/// The parts obtained from [`Framed::into_parts`].
+pub struct FramedParts<T, U> {
+    /// The underlying I/O stream.
+    pub io: T,
+    /// The codec used for encoding and decoding frames.
+    pub codec: U,
+    /// The remaining read buffer, containing data that has been
+    /// read from `io` but not yet consumed by the codec's decoder.
+    pub read_buffer: BytesMut,
+    /// The remaining write buffer, containing framed data that has been
+    /// buffered but not yet flushed to `io`.
+    pub write_buffer: BytesMut,
+    /// Keep the constructor private.
+    _priv: (),
+}
+
+impl<T, U> FramedParts<T, U> {
+    /// Changes the codec used in this `FramedParts`.
+    pub fn map_codec<V, F>(self, f: F) -> FramedParts<T, V>
+    where
+        V: Encoder + Decoder,
+        F: FnOnce(U) -> V,
+    {
+        FramedParts {
+            io: self.io,
+            codec: f(self.codec),
+            read_buffer: self.read_buffer,
+            write_buffer: self.write_buffer,
+            _priv: (),
+        }
     }
 }
