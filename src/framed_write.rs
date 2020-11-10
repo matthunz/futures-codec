@@ -44,7 +44,18 @@ where
     /// Creates a new `FramedWrite` transport with the given `Encoder`.
     pub fn new(inner: T, encoder: E) -> Self {
         Self {
-            inner: framed_write_2(Fuse::new(inner, encoder)),
+            inner: framed_write_2(Fuse::new(inner, encoder), None),
+        }
+    }
+
+    /// Creates a new `FramedWrite` from [`FramedWriteParts`].
+    ///
+    /// See also [`FramedWrite::into_parts`].
+    pub fn from_parts(FramedWriteParts {
+        io, encoder, buffer, ..
+    }: FramedWriteParts<T, E>) -> Self {
+        Self {
+            inner: framed_write_2(Fuse::new(io, encoder), Some(buffer))
         }
     }
 
@@ -82,19 +93,27 @@ where
         self.inner.high_water_mark = hwm;
     }
 
-    /// Release the I/O and Encoder
-    pub fn release(self) -> (T, E) {
-        let fuse = self.inner.release();
-        (fuse.t, fuse.u)
+    /// Consumes the `FramedWrite`, returning its parts such that
+    /// a new `FramedWrite` may be constructed, possibly with a different encoder.
+    ///
+    /// See also [`FramedWrite::from_parts`].
+    pub fn into_parts(self) -> FramedWriteParts<T, E> {
+        let (fuse, buffer) = self.inner.into_parts();
+        FramedWriteParts {
+            io: fuse.t,
+            encoder: fuse.u,
+            buffer,
+            _priv: (),
+        }
     }
 
     /// Consumes the `FramedWrite`, returning its underlying I/O stream.
     ///
-    /// Note that care should be taken to not tamper with the underlying stream
-    /// of data coming in as it may corrupt the stream of frames otherwise
-    /// being worked with.
+    /// Note that data that has already been written but not yet flushed
+    /// is dropped. To retain any such potentially buffered data, use
+    /// [`FramedWrite::into_parts()`].
     pub fn into_inner(self) -> T {
-        self.release().0
+        self.into_parts().io
     }
 
     /// Returns a reference to the underlying encoder.
@@ -176,11 +195,11 @@ impl<T> DerefMut for FramedWrite2<T> {
 // TCP send buffer size (SO_SNDBUF)
 const DEFAULT_SEND_HIGH_WATER_MARK: usize = 131072;
 
-pub fn framed_write_2<T>(inner: T) -> FramedWrite2<T> {
+pub fn framed_write_2<T>(inner: T, buffer: Option<BytesMut>) -> FramedWrite2<T> {
     FramedWrite2 {
         inner,
         high_water_mark: DEFAULT_SEND_HIGH_WATER_MARK,
-        buffer: BytesMut::with_capacity(1028 * 8),
+        buffer: buffer.unwrap_or_else(|| BytesMut::with_capacity(1028 * 8)),
     }
 }
 
@@ -240,11 +259,39 @@ where
 }
 
 impl<T> FramedWrite2<T> {
-    pub fn release(self) -> T {
-        self.inner
+    pub fn into_parts(self) -> (T, BytesMut) {
+        (self.inner, self.buffer)
     }
 }
 
 fn err_eof() -> Error {
     Error::new(ErrorKind::UnexpectedEof, "End of file")
+}
+
+/// The parts obtained from [`FramedWrite::into_parts`].
+pub struct FramedWriteParts<T, E> {
+    /// The underlying I/O stream.
+    pub io: T,
+    /// The frame encoder.
+    pub encoder: E,
+    /// The framed data that has been buffered but not yet flushed to `io`.
+    pub buffer: BytesMut,
+    /// Keep the constructor private.
+    _priv: (),
+}
+
+impl<T, E> FramedWriteParts<T, E> {
+    /// Changes the encoder used in `FramedWriteParts`.
+    pub fn map_encoder<G, F>(self, f: F) -> FramedWriteParts<T, G>
+    where
+        G: Encoder,
+        F: FnOnce(E) -> G,
+    {
+        FramedWriteParts {
+            io: self.io,
+            encoder: f(self.encoder),
+            buffer: self.buffer,
+            _priv: (),
+        }
+    }
 }

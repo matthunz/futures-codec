@@ -14,7 +14,7 @@ fn same_msgs_are_received_as_were_sent() {
     };
     executor::block_on(send_msgs);
 
-    let (mut cur, _) = framed.release();
+    let mut cur = framed.into_inner();
     cur.set_position(0);
     let framed = Framed::new(cur, LengthCodec {});
 

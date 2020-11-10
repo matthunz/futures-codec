@@ -57,7 +57,7 @@ fn line_write() {
     let mut framer = FramedWrite::new(curs, LinesCodec {});
     executor::block_on(framer.send("Hello\n".to_owned())).unwrap();
     executor::block_on(framer.send("World\n".to_owned())).unwrap();
-    let (curs, _) = framer.release();
+    let curs = framer.into_inner();
     assert_eq!(&curs.get_ref()[0..12], b"Hello\nWorld\n");
     assert_eq!(curs.position(), 12);
 }
@@ -69,7 +69,7 @@ fn line_write_to_eof() {
     let mut framer = FramedWrite::new(curs, LinesCodec {});
     let _err =
         executor::block_on(framer.send("This will fill up the buffer\n".to_owned())).unwrap_err();
-    let (curs, _) = framer.release();
+    let curs = framer.into_inner();
     assert_eq!(curs.position(), 16);
     assert_eq!(&curs.get_ref()[0..16], b"This will fill u");
 }
@@ -93,7 +93,7 @@ fn send_high_water_mark() {
     let mut framer = FramedWrite::new(io, BytesCodec {});
     framer.set_send_high_water_mark(500);
     executor::block_on(framer.send_all(&mut stream)).unwrap();
-    let (io, _) = framer.release();
+    let io = framer.into_inner();
     assert_eq!(io.num_poll_write, 2);
     assert_eq!(io.last_write_size, 499);
 }
