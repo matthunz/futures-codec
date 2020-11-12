@@ -1,17 +1,18 @@
-use futures::io::{AsyncRead, AsyncWrite};
-use pin_project::pin_project;
+use futures_util::io::{AsyncRead, AsyncWrite};
+use pin_project_lite::pin_project;
 use std::io::Error;
 use std::marker::Unpin;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-#[pin_project]
-#[derive(Debug)]
-pub(crate) struct Fuse<T, U> {
-    #[pin]
-    pub t: T,
-    pub u: U,
+pin_project! {
+    #[derive(Debug)]
+    pub(crate) struct Fuse<T, U> {
+        #[pin]
+        pub t: T,
+        pub u: U,
+    }
 }
 
 impl<T, U> Fuse<T, U> {

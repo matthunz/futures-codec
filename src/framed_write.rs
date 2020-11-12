@@ -1,39 +1,41 @@
 use super::fuse::Fuse;
 use super::Encoder;
 use bytes::{Buf, BytesMut};
-use futures::io::{AsyncRead, AsyncWrite};
-use futures::{ready, Sink};
-use pin_project::pin_project;
+use futures_sink::Sink;
+use futures_util::io::{AsyncRead, AsyncWrite};
+use futures_util::ready;
+use pin_project_lite::pin_project;
 use std::io::{Error, ErrorKind};
 use std::marker::Unpin;
 use std::ops::{Deref, DerefMut};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-/// A `Sink` of frames encoded to an `AsyncWrite`.
-///
-/// # Example
-/// ```
-/// use bytes::Bytes;
-/// use futures_codec::{FramedWrite, BytesCodec};
-/// use futures::SinkExt;
-///
-/// # futures::executor::block_on(async move {
-/// let mut buf = Vec::new();
-/// let mut framed = FramedWrite::new(&mut buf, BytesCodec {});
-///
-/// let bytes = Bytes::from("Hello World!");
-/// framed.send(bytes.clone()).await?;
-///
-/// assert_eq!(&buf[..], &bytes[..]);
-/// # Ok::<_, std::io::Error>(())
-/// # }).unwrap();
-/// ```
-#[pin_project]
-#[derive(Debug)]
-pub struct FramedWrite<T, E> {
-    #[pin]
-    inner: FramedWrite2<Fuse<T, E>>,
+pin_project! {
+    /// A `Sink` of frames encoded to an `AsyncWrite`.
+    ///
+    /// # Example
+    /// ```
+    /// use bytes::Bytes;
+    /// use futures_codec::{FramedWrite, BytesCodec};
+    /// use futures::SinkExt;
+    ///
+    /// # futures::executor::block_on(async move {
+    /// let mut buf = Vec::new();
+    /// let mut framed = FramedWrite::new(&mut buf, BytesCodec {});
+    ///
+    /// let bytes = Bytes::from("Hello World!");
+    /// framed.send(bytes.clone()).await?;
+    ///
+    /// assert_eq!(&buf[..], &bytes[..]);
+    /// # Ok::<_, std::io::Error>(())
+    /// # }).unwrap();
+    /// ```
+    #[derive(Debug)]
+    pub struct FramedWrite<T, E> {
+        #[pin]
+        inner: FramedWrite2<Fuse<T, E>>,
+    }
 }
 
 impl<T, E> FramedWrite<T, E>
@@ -60,7 +62,7 @@ where
     ///
     /// See [`set_send_high_water_mark()`](#method.set_send_high_water_mark).
     pub fn send_high_water_mark(&self) -> usize {
-        return self.inner.high_water_mark;
+        self.inner.high_water_mark
     }
 
     /// Sets high-water mark for writes, in bytes
@@ -149,13 +151,14 @@ impl<T, E> DerefMut for FramedWrite<T, E> {
     }
 }
 
-#[pin_project]
-#[derive(Debug)]
-pub struct FramedWrite2<T> {
-    #[pin]
-    pub inner: T,
-    pub high_water_mark: usize,
-    buffer: BytesMut,
+pin_project! {
+    #[derive(Debug)]
+    pub struct FramedWrite2<T> {
+        #[pin]
+        pub inner: T,
+        pub high_water_mark: usize,
+        buffer: BytesMut,
+    }
 }
 
 impl<T> Deref for FramedWrite2<T> {

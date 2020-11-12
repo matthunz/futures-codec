@@ -1,7 +1,7 @@
 use futures::executor;
 use futures::stream::StreamExt;
 use futures::AsyncRead;
-use futures_codec::{Decoder, FramedRead, LinesCodec, BytesMut};
+use futures_codec::{BytesMut, Decoder, FramedRead, LinesCodec};
 use std::io;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -16,7 +16,7 @@ impl AsyncRead for MockBurstySender {
         _cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<usize>> {
-        const MESSAGES: &'static [u8] = b"one\ntwo\n";
+        const MESSAGES: &[u8] = b"one\ntwo\n";
         if !self.sent && buf.len() >= MESSAGES.len() {
             self.sent = true;
             buf[0..MESSAGES.len()].clone_from_slice(MESSAGES);
