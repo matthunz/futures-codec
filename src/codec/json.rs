@@ -31,6 +31,7 @@ use serde::{Deserialize, Serialize};
 /// };
 /// ```
 #[derive(Debug, PartialEq)]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub struct JsonCodec<Enc, Dec> {
     enc: PhantomData<Enc>,
     dec: PhantomData<Dec>,
@@ -38,6 +39,7 @@ pub struct JsonCodec<Enc, Dec> {
 
 /// JSON Codec error enumeration
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub enum JsonCodecError {
     /// IO error
     Io(std::io::Error),
@@ -153,7 +155,6 @@ where
     }
 }
 
-
 impl<Enc, Dec> Default for JsonCodec<Enc, Dec>
 where
     for<'de> Dec: Deserialize<'de> + 'static,
@@ -163,7 +164,6 @@ where
         Self::new()
     }
 }
-
 
 #[cfg(test)]
 mod test {
