@@ -33,6 +33,7 @@ use serde_cbor::Error as CborError;
 /// };
 /// ```
 #[derive(Debug, PartialEq)]
+#[cfg_attr(docsrs, doc(cfg(feature = "cbor")))]
 pub struct CborCodec<Enc, Dec> {
     enc: PhantomData<Enc>,
     dec: PhantomData<Dec>,
@@ -40,6 +41,7 @@ pub struct CborCodec<Enc, Dec> {
 
 /// JSON Codec error enumeration
 #[derive(Debug)]
+#[cfg_attr(docsrs, doc(cfg(feature = "cbor")))]
 pub enum CborCodecError {
     /// IO error
     Io(IoError),
