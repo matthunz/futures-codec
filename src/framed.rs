@@ -1,16 +1,10 @@
-use super::framed_read::{framed_read_2, FramedRead2};
-use super::framed_write::{framed_write_2, FramedWrite2};
+use super::framed_read::FramedRead2;
+use super::framed_write::FramedWrite2;
 use super::fuse::Fuse;
 use super::{Decoder, Encoder};
 use bytes::BytesMut;
-use futures_sink::Sink;
-use futures_util::io::{AsyncRead, AsyncWrite};
-use futures_util::stream::{Stream, TryStreamExt};
 use pin_project_lite::pin_project;
-use std::marker::Unpin;
 use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 pin_project! {
     /// A unified `Stream` and `Sink` interface to an underlying I/O object,
@@ -58,19 +52,7 @@ impl<T, U> DerefMut for Framed<T, U> {
     }
 }
 
-impl<T, U> Framed<T, U>
-where
-    T: AsyncRead + AsyncWrite,
-    U: Decoder + Encoder,
-{
-    /// Creates a new `Framed` transport with the given codec.
-    /// A codec is a type which implements `Decoder` and `Encoder`.
-    pub fn new(inner: T, codec: U) -> Self {
-        Self {
-            inner: framed_read_2(framed_write_2(Fuse::new(inner, codec))),
-        }
-    }
-
+impl<T, U> Framed<T, U> {
     /// Release the I/O and Codec
     pub fn release(self) -> (T, U) {
         let fuse = self.inner.release().release();
@@ -110,35 +92,106 @@ where
     }
 }
 
-impl<T, U> Stream for Framed<T, U>
-where
-    T: AsyncRead + Unpin,
-    U: Decoder,
-{
-    type Item = Result<U::Item, U::Error>;
+cfg_async! {
+    use futures_sink::Sink;
+    use futures_util::io::{AsyncRead, AsyncWrite};
+    use futures_util::stream::{Stream, TryStreamExt};
+    use std::marker::Unpin;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
 
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.inner.try_poll_next_unpin(cx)
+    impl<T, U> Framed<T, U>
+    where
+        T: AsyncRead + AsyncWrite,
+        U: Decoder + Encoder,
+    {
+        /// Creates a new `Framed` transport with the given codec.
+        /// A codec is a type which implements `Decoder` and `Encoder`.
+        pub fn new(inner: T, codec: U) -> Self {
+            Self {
+                inner: FramedRead2::new(FramedWrite2::new(Fuse::new(inner, codec))),
+            }
+        }
+    }
+
+    impl<T, U> Stream for Framed<T, U>
+    where
+        T: AsyncRead + Unpin,
+        U: Decoder,
+    {
+        type Item = Result<U::Item, U::Error>;
+
+        fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            self.inner.try_poll_next_unpin(cx)
+        }
+    }
+
+    impl<T, U> Sink<U::Item> for Framed<T, U>
+    where
+        T: AsyncWrite + Unpin,
+        U: Encoder,
+    {
+        type Error = U::Error;
+
+        fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            self.project().inner.poll_ready(cx)
+        }
+        fn start_send(self: Pin<&mut Self>, item: U::Item) -> Result<(), Self::Error> {
+            self.project().inner.start_send(item)
+        }
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            self.project().inner.poll_flush(cx)
+        }
+        fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            self.project().inner.poll_close(cx)
+        }
     }
 }
 
-impl<T, U> Sink<U::Item> for Framed<T, U>
-where
-    T: AsyncWrite + Unpin,
-    U: Encoder,
-{
-    type Error = U::Error;
+cfg_blocking! {
+    impl<T, U> Framed<T, U>
+    where
+        T: std::io::Read + std::io::Write,
+        U: Decoder + Encoder,
+    {
+        /// Creates a new blocking `Framed` transport with the given codec.
+        /// A codec is a type which implements `Decoder` and `Encoder`.
+        pub fn new_blocking(inner: T, codec: U) -> Self {
+            Self {
+                inner: FramedRead2::new(FramedWrite2::new(Fuse::new(inner, codec))),
+            }
+        }
+    }
 
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_ready(cx)
+    impl<T, U> Iterator for Framed<T, U>
+    where
+        T: std::io::Read,
+        U: Decoder,
+    {
+        type Item = Result<U::Item, U::Error>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.inner.next()
+        }
     }
-    fn start_send(self: Pin<&mut Self>, item: U::Item) -> Result<(), Self::Error> {
-        self.project().inner.start_send(item)
-    }
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_flush(cx)
-    }
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_close(cx)
+
+    impl<T, U> crate::IterSink<U::Item> for Framed<T, U>
+    where
+        T: std::io::Write,
+        U: Encoder,
+    {
+        type Error = U::Error;
+
+        fn start_send(&mut self, item: U::Item) -> Result<(), Self::Error> {
+            self.inner.start_send(item)
+        }
+
+        fn ready(&mut self) -> Result<(), Self::Error> {
+            self.inner.ready()
+        }
+
+        fn flush(&mut self) -> Result<(), Self::Error> {
+            self.inner.flush()
+        }
     }
 }

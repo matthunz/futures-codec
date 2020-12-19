@@ -2,16 +2,9 @@ use super::fuse::Fuse;
 use super::Decoder;
 
 use bytes::BytesMut;
-use futures_sink::Sink;
-use futures_util::io::AsyncRead;
-use futures_util::ready;
-use futures_util::stream::{Stream, TryStreamExt};
 use pin_project_lite::pin_project;
 use std::io;
-use std::marker::Unpin;
 use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 /// A `Stream` of messages decoded from an `AsyncRead`.
 ///
@@ -50,18 +43,7 @@ impl<T, D> DerefMut for FramedRead<T, D> {
     }
 }
 
-impl<T, D> FramedRead<T, D>
-where
-    T: AsyncRead,
-    D: Decoder,
-{
-    /// Creates a new `FramedRead` transport with the given `Decoder`.
-    pub fn new(inner: T, decoder: D) -> Self {
-        Self {
-            inner: framed_read_2(Fuse::new(inner, decoder)),
-        }
-    }
-
+impl<T, D> FramedRead<T, D> {
     /// Release the I/O and Decoder
     pub fn release(self) -> (T, D) {
         let fuse = self.inner.release();
@@ -99,18 +81,6 @@ where
     }
 }
 
-impl<T, D> Stream for FramedRead<T, D>
-where
-    T: AsyncRead + Unpin,
-    D: Decoder,
-{
-    type Item = Result<D::Item, D::Error>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.inner.try_poll_next_unpin(cx)
-    }
-}
-
 pin_project! {
     #[derive(Debug)]
     pub struct FramedRead2<T> {
@@ -136,85 +106,180 @@ impl<T> DerefMut for FramedRead2<T> {
 
 const INITIAL_CAPACITY: usize = 8 * 1024;
 
-pub fn framed_read_2<T>(inner: T) -> FramedRead2<T> {
-    FramedRead2 {
-        inner,
-        buffer: BytesMut::with_capacity(INITIAL_CAPACITY),
-    }
-}
-
-impl<T> Stream for FramedRead2<T>
-where
-    T: AsyncRead + Decoder + Unpin,
-{
-    type Item = Result<T::Item, T::Error>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = &mut *self;
-
-        if let Some(item) = this.inner.decode(&mut this.buffer)? {
-            return Poll::Ready(Some(Ok(item)));
-        }
-
-        let mut buf = [0u8; INITIAL_CAPACITY];
-
-        loop {
-            let n = ready!(Pin::new(&mut this.inner).poll_read(cx, &mut buf))?;
-            this.buffer.extend_from_slice(&buf[..n]);
-
-            let ended = n == 0;
-
-            match this.inner.decode(&mut this.buffer)? {
-                Some(item) => return Poll::Ready(Some(Ok(item))),
-                None if ended => {
-                    if this.buffer.is_empty() {
-                        return Poll::Ready(None);
-                    } else {
-                        match this.inner.decode_eof(&mut this.buffer)? {
-                            Some(item) => return Poll::Ready(Some(Ok(item))),
-                            None if this.buffer.is_empty() => return Poll::Ready(None),
-                            None => {
-                                return Poll::Ready(Some(Err(io::Error::new(
-                                    io::ErrorKind::UnexpectedEof,
-                                    "bytes remaining in stream",
-                                )
-                                .into())));
-                            }
-                        }
-                    }
-                }
-                _ => continue,
-            }
-        }
-    }
-}
-
-impl<T, I> Sink<I> for FramedRead2<T>
-where
-    T: Sink<I> + Unpin,
-{
-    type Error = T::Error;
-
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_ready(cx)
-    }
-    fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
-        self.project().inner.start_send(item)
-    }
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_flush(cx)
-    }
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_close(cx)
-    }
-}
-
 impl<T> FramedRead2<T> {
+    pub fn new(inner: T) -> FramedRead2<T> {
+        FramedRead2 {
+            inner,
+            buffer: BytesMut::with_capacity(INITIAL_CAPACITY),
+        }
+    }
+
     pub fn release(self) -> T {
         self.inner
     }
 
     pub fn buffer(&self) -> &BytesMut {
         &self.buffer
+    }
+}
+
+cfg_async! {
+    use futures_sink::Sink;
+    use futures_util::io::AsyncRead;
+    use futures_util::ready;
+    use futures_util::stream::{Stream, TryStreamExt};
+    use std::marker::Unpin;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+
+    impl<T, D> FramedRead<T, D>
+    where
+        T: AsyncRead,
+        D: Decoder,
+    {
+        /// Creates a new `FramedRead` transport with the given `Decoder`.
+        pub fn new(inner: T, decoder: D) -> Self {
+            Self {
+                inner: FramedRead2::new(Fuse::new(inner, decoder)),
+            }
+        }
+    }
+
+    impl<T, D> Stream for FramedRead<T, D>
+    where
+        T: AsyncRead + Unpin,
+        D: Decoder,
+    {
+        type Item = Result<D::Item, D::Error>;
+
+        fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            self.inner.try_poll_next_unpin(cx)
+        }
+    }
+
+    impl<T> Stream for FramedRead2<T>
+    where
+        T: AsyncRead + Decoder + Unpin,
+    {
+        type Item = Result<T::Item, T::Error>;
+
+        fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            let this = &mut *self;
+
+            if let Some(item) = this.inner.decode(&mut this.buffer)? {
+                return Poll::Ready(Some(Ok(item)));
+            }
+
+            let mut buf = [0u8; INITIAL_CAPACITY];
+
+            loop {
+                let n = ready!(Pin::new(&mut this.inner).poll_read(cx, &mut buf))?;
+                this.buffer.extend_from_slice(&buf[..n]);
+
+                let ended = n == 0;
+
+                match this.inner.decode(&mut this.buffer)? {
+                    Some(item) => return Poll::Ready(Some(Ok(item))),
+                    None if ended => {
+                        if this.buffer.is_empty() {
+                            return Poll::Ready(None);
+                        } else {
+                            match this.inner.decode_eof(&mut this.buffer)? {
+                                Some(item) => return Poll::Ready(Some(Ok(item))),
+                                None if this.buffer.is_empty() => return Poll::Ready(None),
+                                None => {
+                                    return Poll::Ready(Some(Err(io::Error::new(
+                                        io::ErrorKind::UnexpectedEof,
+                                        "bytes remaining in stream",
+                                    )
+                                    .into())));
+                                }
+                            }
+                        }
+                    }
+                    _ => continue,
+                }
+            }
+        }
+    }
+
+    impl<T, I> Sink<I> for FramedRead2<T>
+    where
+        T: Sink<I> + Unpin,
+    {
+        type Error = T::Error;
+
+        fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            self.project().inner.poll_ready(cx)
+        }
+        fn start_send(self: Pin<&mut Self>, item: I) -> Result<(), Self::Error> {
+            self.project().inner.start_send(item)
+        }
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            self.project().inner.poll_flush(cx)
+        }
+        fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            self.project().inner.poll_close(cx)
+        }
+    }
+}
+
+cfg_blocking! {
+    impl<T, D> FramedRead<T, D>
+    where
+        T: io::Read,
+        D: Decoder,
+    {
+        /// Creates a new blocking `FramedRead` transport with the given `Decoder`.
+        pub fn new_blocking(inner: T, decoder: D) -> Self {
+            Self {
+                inner: FramedRead2::new(Fuse::new(inner, decoder)),
+            }
+        }
+    }
+
+    impl<T, D> Iterator for FramedRead<T, D>
+    where
+        T: io::Read,
+        D: Decoder,
+    {
+        type Item = Result<D::Item, D::Error>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.inner.next()
+        }
+    }
+
+    impl<T> Iterator for FramedRead2<T>
+    where
+        T: io::Read + Decoder,
+    {
+        type Item = Result<T::Item, T::Error>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            match self.inner.decode(&mut self.buffer) {
+                Ok(Some(item)) => return Some(Ok(item)),
+                Err(e) => return Some(Err(e)),
+                Ok(None) => (),
+            };
+
+            let mut buf = [0u8; INITIAL_CAPACITY];
+
+            loop {
+                let n = match self.inner.read(&mut buf) {
+                    Ok(n) => n,
+                    Err(e) => return Some(Err(e.into())),
+                };
+
+                self.buffer.extend_from_slice(&buf[..n]);
+
+                match self.inner.decode(&mut self.buffer) {
+                    Ok(Some(item)) => return Some(Ok(item)),
+                    Ok(None) if n == 0 => return None,
+                    Err(e) => return Some(Err(e)),
+                    _ => continue,
+                };
+            }
+        }
     }
 }

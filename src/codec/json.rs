@@ -153,7 +153,6 @@ where
     }
 }
 
-
 impl<Enc, Dec> Default for JsonCodec<Enc, Dec>
 where
     for<'de> Dec: Deserialize<'de> + 'static,
@@ -163,7 +162,6 @@ where
         Self::new()
     }
 }
-
 
 #[cfg(test)]
 mod test {

@@ -13,32 +13,42 @@ keywords = ["future", "futures", "async", "codec"]
 categories = ["asynchronous", "network-programming"]
 
 [features]
-default = []
-json = [ "serde", "serde_json" ]
-cbor = [ "serde", "serde_cbor" ]
+default = ["async"]
+async = ["futures-sink", "futures-util"]
+blocking = []
+json = ["serde", "serde_json"]
+cbor = ["serde", "serde_cbor"]
 
 [dependencies]
-bytes = "0.5.4"
-futures-sink = "0.3.7"
-futures-util = { version = "0.3.7", features = ["io"] }
-memchr = "2.3.4"
-pin-project-lite = "0.1.11"
+bytes = "0.6"
+memchr = "2.3"
+pin-project-lite = "0.2"
 
-[dev-dependencies]
-futures = "0.3.7"
+[dependencies.futures-sink]
+version = "0.3"
+optional = true
+
+[dependencies.futures-util]
+version = "0.3"
+default-features = false
+features = ["io"]
+optional = true
 
 [dependencies.serde]
-version = '1.0.113'
+version = "1"
 optional = true
-features = [ "derive" ]
+features = ["derive"]
 
 [dependencies.serde_json]
-version = '1.0.55'
+version = "1"
 optional = true
 
 [dependencies.serde_cbor]
-version = '0.11.1'
+version = "0.11"
 optional = true
+
+[dev-dependencies]
+futures = "0.3.7"
 
 [package.metadata.docs.rs]
 all-features = true

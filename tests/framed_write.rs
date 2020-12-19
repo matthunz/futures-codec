@@ -2,15 +2,16 @@ use core::iter::Iterator;
 use futures::io::{AsyncWrite, Cursor};
 use futures::sink::SinkExt;
 use futures::{executor, stream, stream::StreamExt};
-use futures_codec::{Bytes, BytesCodec, FramedWrite, LinesCodec};
-use std::pin::Pin;
+use futures_codec::{Bytes, BytesCodec, FramedWrite, IterSinkExt, LinesCodec};
 use std::task::{Context, Poll};
+use std::{io, pin::Pin};
 
 // An iterator which outputs a single zero byte up to limit times
 struct ZeroBytes {
     pub count: usize,
     pub limit: usize,
 }
+
 impl Iterator for ZeroBytes {
     type Item = Bytes;
     fn next(&mut self) -> Option<Self::Item> {
@@ -24,14 +25,15 @@ impl Iterator for ZeroBytes {
 }
 
 // An AsyncWrite which is always ready and just consumes the data
-struct AsyncWriteNull {
+struct WriteNull {
     // number of poll_write calls
     pub num_poll_write: usize,
 
     // size of the last poll_write
     pub last_write_size: usize,
 }
-impl AsyncWrite for AsyncWriteNull {
+
+impl AsyncWrite for WriteNull {
     fn poll_write(
         mut self: Pin<&mut Self>,
         _cx: &mut Context<'_>,
@@ -51,12 +53,35 @@ impl AsyncWrite for AsyncWriteNull {
     }
 }
 
+impl io::Write for WriteNull {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.num_poll_write += 1;
+        self.last_write_size = buf.len();
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
 #[test]
 fn line_write() {
     let curs = Cursor::new(vec![0u8; 16]);
     let mut framer = FramedWrite::new(curs, LinesCodec {});
     executor::block_on(framer.send("Hello\n".to_owned())).unwrap();
     executor::block_on(framer.send("World\n".to_owned())).unwrap();
+    let (curs, _) = framer.release();
+    assert_eq!(&curs.get_ref()[0..12], b"Hello\nWorld\n");
+    assert_eq!(curs.position(), 12);
+}
+
+#[test]
+fn blocking_line_write() {
+    let curs = std::io::Cursor::new(vec![0u8; 16]);
+    let mut framer = FramedWrite::new_blocking(curs, LinesCodec {});
+    framer.send("Hello\n".to_owned()).unwrap();
+    framer.send("World\n".to_owned()).unwrap();
     let (curs, _) = framer.release();
     assert_eq!(&curs.get_ref()[0..12], b"Hello\nWorld\n");
     assert_eq!(curs.position(), 12);
@@ -75,6 +100,19 @@ fn line_write_to_eof() {
 }
 
 #[test]
+fn blocking_write_to_eof() {
+    let mut buf = [0u8; 16];
+    let curs = std::io::Cursor::new(&mut buf[..]);
+    let mut framer = FramedWrite::new_blocking(curs, LinesCodec {});
+    let _err = framer
+        .send("This will fill up the buffer\n".to_owned())
+        .unwrap_err();
+    let (curs, _) = framer.release();
+    assert_eq!(curs.position(), 16);
+    assert_eq!(&curs.get_ref()[0..16], b"This will fill u");
+}
+
+#[test]
 fn send_high_water_mark() {
     // stream will output 999 bytes, 1 at at a time, and will always be ready
     let mut stream = stream::iter(ZeroBytes {
@@ -84,7 +122,7 @@ fn send_high_water_mark() {
     .map(Ok);
 
     // sink will eat whatever it receives
-    let io = AsyncWriteNull {
+    let io = WriteNull {
         num_poll_write: 0,
         last_write_size: 0,
     };
@@ -92,7 +130,30 @@ fn send_high_water_mark() {
     // expect two sends
     let mut framer = FramedWrite::new(io, BytesCodec {});
     framer.set_send_high_water_mark(500);
-    executor::block_on(framer.send_all(&mut stream)).unwrap();
+    executor::block_on(SinkExt::send_all(&mut framer, &mut stream)).unwrap();
+    let (io, _) = framer.release();
+    assert_eq!(io.num_poll_write, 2);
+    assert_eq!(io.last_write_size, 499);
+}
+
+#[test]
+fn blocking_send_high_water_mark() {
+    // stream will output 999 bytes, 1 at at a time, and will always be ready
+    let it = ZeroBytes {
+        count: 0,
+        limit: 999,
+    };
+
+    // sink will eat whatever it receives
+    let io = WriteNull {
+        num_poll_write: 0,
+        last_write_size: 0,
+    };
+
+    // expect two sends
+    let mut framer = FramedWrite::new_blocking(io, BytesCodec {});
+    framer.set_send_high_water_mark(500);
+    IterSinkExt::send_all(&mut framer, it).unwrap();
     let (io, _) = framer.release();
     assert_eq!(io.num_poll_write, 2);
     assert_eq!(io.last_write_size, 499);

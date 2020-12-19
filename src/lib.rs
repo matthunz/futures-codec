@@ -21,6 +21,12 @@
 //! # }).unwrap();
 //! ```
 
+#[cfg(all(not(feature = "async"), not(feature = "blocking")))]
+compile_error!("One of 'async' or 'blocking' features required.");
+
+#[macro_use]
+mod cfg;
+
 mod codec;
 pub use bytes::{Bytes, BytesMut};
 pub use codec::{BytesCodec, LengthCodec, LinesCodec};
@@ -46,3 +52,8 @@ mod framed_write;
 pub use framed_write::FramedWrite;
 
 mod fuse;
+
+cfg_blocking! {
+    mod sink;
+    pub use sink::{IterSink, IterSinkExt};
+}

@@ -1,15 +1,9 @@
 use super::fuse::Fuse;
 use super::Encoder;
 use bytes::{Buf, BytesMut};
-use futures_sink::Sink;
-use futures_util::io::{AsyncRead, AsyncWrite};
-use futures_util::ready;
 use pin_project_lite::pin_project;
-use std::io::{Error, ErrorKind};
-use std::marker::Unpin;
+use std::io;
 use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 pin_project! {
     /// A `Sink` of frames encoded to an `AsyncWrite`.
@@ -38,18 +32,7 @@ pin_project! {
     }
 }
 
-impl<T, E> FramedWrite<T, E>
-where
-    T: AsyncWrite,
-    E: Encoder,
-{
-    /// Creates a new `FramedWrite` transport with the given `Encoder`.
-    pub fn new(inner: T, encoder: E) -> Self {
-        Self {
-            inner: framed_write_2(Fuse::new(inner, encoder)),
-        }
-    }
-
+impl<T, E> FramedWrite<T, E> {
     /// High-water mark for writes, in bytes
     ///
     /// The send *high-water mark* prevents the `FramedWrite`
@@ -116,27 +99,6 @@ where
     }
 }
 
-impl<T, E> Sink<E::Item> for FramedWrite<T, E>
-where
-    T: AsyncWrite + Unpin,
-    E: Encoder,
-{
-    type Error = E::Error;
-
-    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_ready(cx)
-    }
-    fn start_send(self: Pin<&mut Self>, item: E::Item) -> Result<(), Self::Error> {
-        self.project().inner.start_send(item)
-    }
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_flush(cx)
-    }
-    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        self.project().inner.poll_close(cx)
-    }
-}
-
 impl<T, E> Deref for FramedWrite<T, E> {
     type Target = T;
 
@@ -179,75 +141,199 @@ impl<T> DerefMut for FramedWrite2<T> {
 // TCP send buffer size (SO_SNDBUF)
 const DEFAULT_SEND_HIGH_WATER_MARK: usize = 131072;
 
-pub fn framed_write_2<T>(inner: T) -> FramedWrite2<T> {
-    FramedWrite2 {
-        inner,
-        high_water_mark: DEFAULT_SEND_HIGH_WATER_MARK,
-        buffer: BytesMut::with_capacity(1028 * 8),
-    }
-}
-
-impl<T: AsyncRead + Unpin> AsyncRead for FramedWrite2<T> {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut [u8],
-    ) -> Poll<Result<usize, Error>> {
-        self.project().inner.poll_read(cx, buf)
-    }
-}
-
-impl<T> Sink<T::Item> for FramedWrite2<T>
-where
-    T: AsyncWrite + Encoder + Unpin,
-{
-    type Error = T::Error;
-
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        let this = &mut *self;
-        while this.buffer.len() >= this.high_water_mark {
-            let num_write = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
-
-            if num_write == 0 {
-                return Poll::Ready(Err(err_eof().into()));
-            }
-
-            this.buffer.advance(num_write);
-        }
-
-        Poll::Ready(Ok(()))
-    }
-    fn start_send(mut self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::Error> {
-        let this = &mut *self;
-        this.inner.encode(item, &mut this.buffer)
-    }
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        let mut this = self.project();
-
-        while !this.buffer.is_empty() {
-            let num_write = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
-
-            if num_write == 0 {
-                return Poll::Ready(Err(err_eof().into()));
-            }
-
-            this.buffer.advance(num_write);
-        }
-
-        this.inner.poll_flush(cx).map_err(Into::into)
-    }
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
-        ready!(self.as_mut().poll_flush(cx))?;
-        self.project().inner.poll_close(cx).map_err(Into::into)
-    }
-}
-
 impl<T> FramedWrite2<T> {
+    pub fn new(inner: T) -> FramedWrite2<T> {
+        FramedWrite2 {
+            inner,
+            high_water_mark: DEFAULT_SEND_HIGH_WATER_MARK,
+            buffer: BytesMut::with_capacity(1028 * 8),
+        }
+    }
+
     pub fn release(self) -> T {
         self.inner
     }
 }
 
-fn err_eof() -> Error {
-    Error::new(ErrorKind::UnexpectedEof, "End of file")
+cfg_async! {
+    use futures_sink::Sink;
+    use futures_util::io::{AsyncRead, AsyncWrite};
+    use futures_util::ready;
+    use std::marker::Unpin;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+
+    impl<T, E> FramedWrite<T, E>
+    where
+        T: AsyncWrite,
+        E: Encoder,
+    {
+        /// Creates a new `FramedWrite` transport with the given `Encoder`.
+        pub fn new(inner: T, encoder: E) -> Self {
+            Self {
+                inner: FramedWrite2::new(Fuse::new(inner, encoder)),
+            }
+        }
+    }
+
+    impl<T, E> Sink<E::Item> for FramedWrite<T, E>
+    where
+        T: AsyncWrite + Unpin,
+        E: Encoder,
+    {
+        type Error = E::Error;
+
+        fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            self.project().inner.poll_ready(cx)
+        }
+        fn start_send(self: Pin<&mut Self>, item: E::Item) -> Result<(), Self::Error> {
+            self.project().inner.start_send(item)
+        }
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            self.project().inner.poll_flush(cx)
+        }
+        fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            self.project().inner.poll_close(cx)
+        }
+    }
+
+    impl<T: AsyncRead + Unpin> AsyncRead for FramedWrite2<T> {
+        fn poll_read(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &mut [u8],
+        ) -> Poll<io::Result<usize>> {
+            self.project().inner.poll_read(cx, buf)
+        }
+    }
+
+    impl<T> Sink<T::Item> for FramedWrite2<T>
+    where
+        T: AsyncWrite + Encoder + Unpin,
+    {
+        type Error = T::Error;
+
+        fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            let this = &mut *self;
+            while this.buffer.len() >= this.high_water_mark {
+                let num_write = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
+
+                if num_write == 0 {
+                    return Poll::Ready(Err(err_eof().into()));
+                }
+
+                this.buffer.advance(num_write);
+            }
+
+            Poll::Ready(Ok(()))
+        }
+        fn start_send(mut self: Pin<&mut Self>, item: T::Item) -> Result<(), Self::Error> {
+            let this = &mut *self;
+            this.inner.encode(item, &mut this.buffer)
+        }
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            let mut this = self.project();
+
+            while !this.buffer.is_empty() {
+                let num_write = ready!(Pin::new(&mut this.inner).poll_write(cx, &this.buffer))?;
+
+                if num_write == 0 {
+                    return Poll::Ready(Err(err_eof().into()));
+                }
+
+                this.buffer.advance(num_write);
+            }
+
+            this.inner.poll_flush(cx).map_err(Into::into)
+        }
+        fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+            ready!(self.as_mut().poll_flush(cx))?;
+            self.project().inner.poll_close(cx).map_err(Into::into)
+        }
+    }
+}
+
+cfg_blocking! {
+    use crate::sink::IterSink;
+
+    impl<T, E> FramedWrite<T, E>
+    where
+        T: io::Write,
+        E: Encoder,
+    {
+        /// Creates a new blocking `FramedWrite` transport with the given `Encoder`.
+        pub fn new_blocking(inner: T, encoder: E) -> Self {
+            Self {
+                inner: FramedWrite2::new(Fuse::new(inner, encoder)),
+            }
+        }
+    }
+
+    impl<T, E> IterSink<E::Item> for FramedWrite<T, E>
+    where
+        T: io::Write,
+        E: Encoder,
+    {
+        type Error = E::Error;
+
+        fn start_send(&mut self, item: E::Item) -> Result<(), Self::Error> {
+            self.inner.start_send(item)
+        }
+
+        fn ready(&mut self) -> Result<(), Self::Error> {
+            self.inner.ready()
+        }
+
+        fn flush(&mut self) -> Result<(), Self::Error> {
+            self.inner.flush()
+        }
+    }
+
+    impl<T: io::Read> io::Read for FramedWrite2<T> {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            self.inner.read(buf)
+        }
+    }
+
+    impl<T> IterSink<T::Item> for FramedWrite2<T>
+    where
+        T: io::Write + Encoder,
+    {
+        type Error = T::Error;
+
+        fn start_send(&mut self, item: T::Item) -> Result<(), Self::Error> {
+            self.inner.encode(item, &mut self.buffer)
+        }
+
+        fn flush(&mut self) -> Result<(), Self::Error> {
+            while !self.buffer.is_empty() {
+                let num_write = self.inner.write(&self.buffer)?;
+
+                if num_write == 0 {
+                    return Err(err_eof().into());
+                }
+
+                self.buffer.advance(num_write);
+            }
+
+            self.inner.flush().map_err(Into::into)
+        }
+
+        fn ready(&mut self) -> Result<(), Self::Error> {
+            while self.buffer.len() >= self.high_water_mark {
+                let num_write = self.inner.write(&self.buffer)?;
+
+                if num_write == 0 {
+                    return Err(err_eof().into());
+                }
+
+                self.buffer.advance(num_write);
+            }
+            Ok(())
+        }
+    }
+}
+
+fn err_eof() -> io::Error {
+    io::Error::new(io::ErrorKind::UnexpectedEof, "End of file")
 }
