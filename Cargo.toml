@@ -18,7 +18,7 @@ json = [ "serde", "serde_json" ]
 cbor = [ "serde", "serde_cbor" ]
 
 [dependencies]
-bytes = "0.5.4"
+bytes = "1"
 futures-sink = "0.3.7"
 futures-util = { version = "0.3.7", features = ["io"] }
 memchr = "2.3.4"
