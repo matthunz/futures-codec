@@ -1,9 +1,11 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(missing_docs)]
 //! Utilities for encoding and decoding frames using `async/await`.
 //!
-//! Contains adapters to go from streams of bytes, [`AsyncRead`](futures::io::AsyncRead)
-//! and [`AsyncWrite`](futures::io::AsyncWrite), to framed streams implementing [`Sink`](futures::Sink) and [`Stream`](futures::Stream).
-//! Framed streams are also known as `transports`.
+//! Contains adapters to go from streams of bytes, [`AsyncRead`](futures-util::io::AsyncRead) and
+//! [`AsyncWrite`](futures-util::io::AsyncWrite), to framed streams implementing
+//! [`Sink`](futures-util::Sink) and [`Stream`](futures-util::Stream). Framed streams are also
+//! known as `transports`.
 //!
 //! ```
 //! # futures::executor::block_on(async move {
@@ -26,8 +28,10 @@ pub use bytes::{Bytes, BytesMut};
 pub use codec::{BytesCodec, LengthCodec, LinesCodec};
 
 #[cfg(feature = "cbor")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub use codec::{CborCodec, CborCodecError};
 #[cfg(feature = "json")]
+#[cfg_attr(docsrs, doc(cfg(feature = "json")))]
 pub use codec::{JsonCodec, JsonCodecError};
 
 mod decoder;

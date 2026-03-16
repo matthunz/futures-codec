@@ -3,3 +3,12 @@ rust:
   - stable
   - beta
   - nightly
+
+jobs:
+  include:
+    - rust: nightly
+      env:
+        RUSTDOCFLAGS: --cfg=docsrs --deny=broken_intra_doc_links
+      # Skip default `cargo build`
+      install: true
+      script: cargo doc --all-features --no-deps
